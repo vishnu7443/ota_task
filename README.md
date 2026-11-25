@@ -6,14 +6,14 @@ All company, customer, product, and transaction records are strictly fictional b
 
 ---
 
-## Current Status: Phase 7 — Bill of Materials & Production Management
+## Current Status: Phase 8 — GST Billing, Invoicing & Dispatch Management
 
-Implemented and verified across Phases 4, 5, 6, and 7:
-- **Modular Monolith Backend & Role-Scoped UI:** Backend modules (`iam`, `sales`, `orders`, `purchasing`, `inventory`, `production`, `audit`) cleanly layered across FastAPI routers, Pydantic schemas, state guards, services, repositories, and SQLAlchemy 2.0 models, paired with mobile-first Salesman (`375px`) and desktop-first Factory Control Desk (`1280px`) interfaces.
-- **PostgreSQL 16 Schema, Constraints & Triggers (`0001`, `0002`, `0003`, `0004`):**
-  - Integer-paisa financial columns, `NUMERIC(18,3)` canonical base quantities (`g`, `ml`, `piece`, `packet`), `NUMERIC(18,6)` sub-paisa FIFO unit costs, `GENERATED ALWAYS AS` available-stock columns, `ON DELETE RESTRICT` foreign keys, append-only ledger/audit triggers (`fn_prevent_mutation()`), immutable active/superseded BOM triggers (`trg_bom_version_immutability`, `trg_bom_component_immutability`), and atomic movement-to-balance trigger (`fn_sync_balance_from_movement()`).
+Implemented and verified across Phases 4, 5, 6, 7, and 8:
+- **Modular Monolith Backend & Role-Scoped UI:** Backend modules (`iam`, `sales`, `orders`, `purchasing`, `inventory`, `production`, `billing`, `audit`) cleanly layered across FastAPI routers, Pydantic schemas, state guards, services, repositories, and SQLAlchemy 2.0 models, paired with mobile-first Salesman (`375px`) and desktop-first Factory Control Desk (`1280px`) interfaces.
+- **PostgreSQL 16 Schema, Constraints & Triggers (`0001`–`0005`):**
+  - Integer-paisa financial columns, `NUMERIC(18,3)` canonical base quantities (`g`, `ml`, `piece`, `packet`), `NUMERIC(18,6)` sub-paisa FIFO/FEFO unit costs, `GENERATED ALWAYS AS` available-stock and invoice/credit-note total columns, `ON DELETE RESTRICT` foreign keys, append-only ledger/audit/dispatch-history triggers (`fn_prevent_mutation()`), immutable active/superseded BOM triggers, immutable issued GST invoice/credit-note triggers, over-dispatch trigger guard (`trg_guard_over_dispatch`), and atomic movement-to-balance trigger (`fn_sync_balance_from_movement()`).
 - **Sales Order Management & Stock Reservation (Phases 4–5):**
-  - Enforced lifecycle across `SUBMITTED`, `UNDER_REVIEW`, `CORRECTION_REQUESTED`, `APPROVED`, `REJECTED`, and `CANCELLED` with row-level `FOR UPDATE` locks and `version` checks.
+  - Enforced lifecycle across `SUBMITTED`, `UNDER_REVIEW`, `CORRECTION_REQUESTED`, `APPROVED`, `INVOICED`, `PARTIALLY_DISPATCHED`, `DISPATCHED`, `REJECTED`, and `CANCELLED` with row-level `FOR UPDATE` locks and `version` checks.
   - Atomic stock reservation upon `APPROVED` (`available = on_hand - reserved`) protecting sales commitments against concurrent overselling or negative stock adjustments.
 - **Purchasing, Goods Receipts & Immutable Stock Ledger (Phase 6):**
   - **Suppliers (`purchasing.suppliers`):** CRUD, GSTIN/state-code validation, active toggle, and chronological PO/GRN purchase history.
@@ -24,8 +24,13 @@ Implemented and verified across Phases 4, 5, 6, and 7:
   - **Extensible Product/BOM Versioning (`production.recipe_templates`, `bom_headers`, `bom_versions`, `bom_components`):** Shared cooking recipe templates (`RCP-MRK-BASE`), multiple pack sizes per product (`MRK-200G`, `MRK-500G`), editable `DRAFT` BOM versions, atomic `ACTIVE -> SUPERSEDED` promotion, and trigger-enforced immutability of historical/active BOM versions.
   - **BOM Scaling Calculator & Availability Engine:** Exact Decimal scaling by `batch_multiplier` or `target_output_pkts`, explicit metric conversions (`kg <-> g`, `L <-> ml`), ceiling rounding (`math.ceil`) for indivisible cartons/pouches with shortfall indicators against `available_qty_base`.
   - **Controlled Production Lifecycle (`DRAFT -> PLANNED -> IN_PROGRESS -> COMPLETED -> POSTED` + `CANCELLED`):** Deterministic `BomVersion` pinning, double-issue prevention (`409 DOUBLE_MATERIAL_ISSUE`), FIFO `CostLot` issuance (`PROD_ISSUE_OUT` + `cost_lot_consumptions`), clean separation of `good_qty_pkts` vs `rejected_qty_pkts` vs `damaged_packaging_qty`, atomic posting (`PROD_OUTPUT_IN`, `PACKAGING_DAMAGE_OUT`, `PROD_RETURN_IN`), dual yield/raw/output-scaled variance computation (`BR-VAR-03`), `audit.variance_alerts`, and end-to-end ledger traceability.
+- **GST Billing, Invoicing, Credit Notes, Dispatch & Delivery Tracking (Phase 8):**
+  - **GST Calculation & Place-of-Supply Engine (`billing/gst_engine.py`):** Exact integer-paisa + `Decimal` `ROUND_HALF_UP` tax calculations splitting intra-state (`CGST + SGST`) vs inter-state (`IGST`) strictly from validated supplier/customer state codes & GSTIN prefixes, commercial rupee round-off, Indian amount-in-words, and historical `tax_calculation_snapshot` immutability.
+  - **Invoice Lifecycle & Statutory PDF (`billing/invoices`, `billing/pdf_generator.py`):** `DRAFT -> VERIFIED -> ISSUED` (`INV/YYYY-YY/NNNN` with April 1 Indian FY rollover), partial unique constraint blocking duplicate active invoices, trigger-locked issued tax rows, and deterministic single-page PDF 1.4 invoice export without deducting stock prior to dispatch.
+  - **Credit Notes (`billing/credit_notes`):** Pre-dispatch `INVOICE_CANCELLATION` (`CANCELLED_BY_CN`, releases active reservations & cancels order) and post-dispatch `SALES_RETURN` (`RESTOCK_SELLABLE` adds FG via `CREDIT_RETURN_IN` + `CostLot` vs `SCRAP_DAMAGED` financial reversal only).
+  - **Dispatch & Delivery Tracking (`billing/dispatches`):** Partial & full multi-trip dispatches (`CREATED -> READY_FOR_DISPATCH -> DISPATCHED -> IN_TRANSIT -> DELIVERED / DELIVERY_EXCEPTION`), over-dispatch guards (`409` + DB trigger), atomic FG FEFO `CostLot` depletion & `DISPATCH_OUT` ledger writes, line-level delivery discrepancy logging, Salesman own-order invoice PDF/delivery tracking, and Billing & GST Summary Reports.
 
-> **Scope Boundary (Stop After Phase 7):** Step 8 Final Costing (Labour / Gas-Power / Overhead Allocation), GST Tax Invoicing, Dispatches (physical FG deduction), and Customer Payments/Receivables remain deferred cleanly until the next phases.
+> **Scope Boundary (Stop After Phase 8):** Customer payment receipts & AR settlement (`paid_paisa`), Step 8 Final Costing (Labour / Gas-Power / Overhead Allocation), and final financial reconciliation remain deferred cleanly until the next phase.
 
 ---
 
@@ -46,9 +51,10 @@ Implemented and verified across Phases 4, 5, 6, and 7:
 │   ├── phase4/                        # Phase 4 implementation & testing docs (9 docs)
 │   ├── phase5/                        # Phase 5 lifecycle, verification & audit docs (9 docs)
 │   ├── phase6/                        # Phase 6 purchasing & inventory docs (12 docs)
-│   └── phase7/                        # Phase 7 BOM & production docs (15 docs)
+│   ├── phase7/                        # Phase 7 BOM & production docs (15 docs)
+│   └── phase8/                        # Phase 8 GST billing, PDF, CN, dispatch & delivery docs (16 docs)
 ├── backend/
-│   ├── alembic/                       # 0001 -> 0002 -> 0003 -> 0004_phase7_bom_production
+│   ├── alembic/                       # 0001 -> 0002 -> 0003 -> 0004 -> 0005_phase8_gst_billing_and_dispatch
 │   ├── app/
 │   │   ├── core/                      # Config, PostgreSQL session, exceptions, logging, security
 │   │   ├── modules/
@@ -58,16 +64,17 @@ Implemented and verified across Phases 4, 5, 6, and 7:
 │   │   │   ├── purchasing/            # Suppliers, Purchase Orders, Goods Receipts & QC posting
 │   │   │   ├── inventory/             # Materials, UOMs, CostLots, Ledger, Adjustments & Reports
 │   │   │   ├── production/            # BOM versioning, BOM calculator, runs, execution, posting & variances
+│   │   │   ├── billing/               # GST engine, FY numbering, Invoices, PDF, Credit Notes, Dispatch & Reports
 │   │   │   └── audit/                 # Append-only audit log service & variance alerts
 │   │   └── seeds/
 │   │       ├── benchmark_seed.py      # Official Section 5 master, RM/Pkg/FG opening stock, SUP-001 & MRK-200G BOM v1
 │   │       └── dev_fixtures.py        # Optional separate controlled dev stock fixture helper
-│   └── tests/                         # 41 automated Pytest tests against isolated ota_test DB
+│   └── tests/                         # 46 automated Pytest tests against isolated ota_test DB
 └── frontend/
     └── src/
         ├── lib/                       # API client, money & unit formatters, auth context
         ├── components/                # UI primitives, StatusBadge, mobile & desktop layouts
-        └── pages/                     # Login, Salesman mobile pages, Admin Order/Purchasing/Inventory/BOM/Production pages
+        └── pages/                     # Login, Salesman mobile pages, Admin Order/Purchasing/Inventory/BOM/Production/Billing/Dispatch pages
 ```
 
 ---
@@ -123,7 +130,7 @@ npm run dev
 
 ## Verification & Automated Tests
 
-**Backend Lint & Pytest (41 tests executed against isolated `ota_test`, never mutating `ota_dev`):**
+**Backend Lint & Pytest (46 tests executed against isolated `ota_test`, never mutating `ota_dev`):**
 
 ```bash
 cd backend
@@ -147,10 +154,10 @@ npm run build
 | --- | --- | --- | --- |
 | `salesman_a` | `SALESMAN` | `SalesA@2026!` | Mobile Salesman (`/salesman`) — assigned `Retailer A` |
 | `salesman_b` | `SALESMAN` | `SalesB@2026!` | Mobile Salesman (`/salesman`) — assigned `Distributor B` |
-| `admin` | `FACTORY_ADMIN` | `Admin@2026!` | Desktop Control Desk (`/admin`) — Sales, Purchasing, Inventory, BOM & Production |
-| `supervisor` | `PRODUCTION_SUPERVISOR` | `Prod@2026!` | BOM, Production, Purchasing & Inventory (blocked `403` on Sales Orders) |
-| `auditor` | `ACCOUNTANT_AUDITOR` | `Audit@2026!` | Desktop read-only oversight, Ledger, Variances, Reports & Audit Trail |
-| `owner` | `OWNER` | `Owner@2026!` | Desktop read-only executive oversight, Variances (can acknowledge alerts), Reports & Audit Trail |
+| `admin` | `FACTORY_ADMIN` | `Admin@2026!` | Desktop Control Desk (`/admin`) — Sales, Purchasing, Inventory, BOM, Production, Billing & Dispatch |
+| `supervisor` | `PRODUCTION_SUPERVISOR` | `Prod@2026!` | BOM, Production, Purchasing & Inventory (blocked `403` on Sales Orders & Billing) |
+| `auditor` | `ACCOUNTANT_AUDITOR` | `Audit@2026!` | Desktop read-only oversight, Billing/GST Reports, Dispatch Register, Ledger, Variances & Audit Trail |
+| `owner` | `OWNER` | `Owner@2026!` | Desktop read-only executive oversight, Billing/GST Reports, Variances (can acknowledge alerts), & Audit Trail |
 
 ---
 
@@ -187,3 +194,20 @@ npm run build
   - [testing-report.md](file:///d:/mac/ota/docs/phase7/testing-report.md)
   - [benchmark-validation.md](file:///d:/mac/ota/docs/phase7/benchmark-validation.md)
   - [known-limitations.md](file:///d:/mac/ota/docs/phase7/known-limitations.md)
+- **Phase 8 Documentation (`docs/phase8/`):**
+  - [billing-overview.md](file:///d:/mac/ota/docs/phase8/billing-overview.md)
+  - [invoice-generation.md](file:///d:/mac/ota/docs/phase8/invoice-generation.md)
+  - [gst-calculation-engine.md](file:///d:/mac/ota/docs/phase8/gst-calculation-engine.md)
+  - [place-of-supply-rules.md](file:///d:/mac/ota/docs/phase8/place-of-supply-rules.md)
+  - [invoice-lifecycle.md](file:///d:/mac/ota/docs/phase8/invoice-lifecycle.md)
+  - [invoice-numbering.md](file:///d:/mac/ota/docs/phase8/invoice-numbering.md)
+  - [invoice-pdf-generation.md](file:///d:/mac/ota/docs/phase8/invoice-pdf-generation.md)
+  - [credit-note-management.md](file:///d:/mac/ota/docs/phase8/credit-note-management.md)
+  - [dispatch-management.md](file:///d:/mac/ota/docs/phase8/dispatch-management.md)
+  - [partial-dispatch.md](file:///d:/mac/ota/docs/phase8/partial-dispatch.md)
+  - [delivery-tracking.md](file:///d:/mac/ota/docs/phase8/delivery-tracking.md)
+  - [inventory-integration.md](file:///d:/mac/ota/docs/phase8/inventory-integration.md)
+  - [api-documentation.md](file:///d:/mac/ota/docs/phase8/api-documentation.md)
+  - [testing-report.md](file:///d:/mac/ota/docs/phase8/testing-report.md)
+  - [benchmark-validation.md](file:///d:/mac/ota/docs/phase8/benchmark-validation.md)
+  - [known-limitations.md](file:///d:/mac/ota/docs/phase8/known-limitations.md)
