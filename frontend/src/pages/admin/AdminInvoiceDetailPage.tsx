@@ -183,6 +183,13 @@ export function AdminInvoiceDetailPage() {
               </Button>
             </>
           )}
+          {inv?.doc_status === "ISSUED" && inv.outstanding_paisa > 0 && canOperate && (
+            <Button asChild variant="outline">
+              <Link to={`/admin/finance/payments?customer_id=${inv.customer_id}&invoice_id=${inv.id}`}>
+                Record Payment
+              </Link>
+            </Button>
+          )}
           {inv?.doc_status === "ISSUED" && inv.remaining_dispatch_qty_pkts > 0 && canOperate && (
             <Button asChild>
               <Link to={`/admin/dispatch?invoice_id=${inv.id}`}>
@@ -553,7 +560,66 @@ export function AdminInvoiceDetailPage() {
             </Card>
           </div>
 
-          {/* Audit Trail */}
+          {/* Payment Allocations */}
+        {inv?.doc_status === "ISSUED" && (
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+              <CardTitle className="text-base">Payment Settlements</CardTitle>
+              <div className="flex items-center gap-2 text-xs">
+                <StatusBadge status={inv.payment_status} />
+                <span className="font-semibold tabular-nums">
+                  Paid {formatInrFromPaisa(inv.paid_paisa)} / Outstanding{" "}
+                  {formatInrFromPaisa(inv.outstanding_paisa)}
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {(inv.allocations ?? []).length === 0 ? (
+                <div className="text-xs text-muted-foreground">
+                  No customer payment allocations recorded against this invoice yet.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b text-left uppercase text-muted-foreground">
+                        <th className="py-2 pr-3">Payment #</th>
+                        <th className="py-2 pr-3">Payment Date</th>
+                        <th className="py-2 pr-3">Mode / Ref</th>
+                        <th className="py-2 pr-3">Status</th>
+                        <th className="py-2 text-right">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {(inv.allocations ?? []).map((alloc) => (
+                        <tr key={alloc.id}>
+                          <td className="py-2 pr-3 font-mono font-semibold text-primary">
+                            <Link to={`/admin/finance/payments?search=${alloc.payment_number}`}>
+                              {alloc.payment_number}
+                            </Link>
+                          </td>
+                          <td className="py-2 pr-3">{alloc.payment_date}</td>
+                          <td className="py-2 pr-3">
+                            {alloc.payment_mode}
+                            {alloc.reference_no ? ` · ${alloc.reference_no}` : ""}
+                          </td>
+                          <td className="py-2 pr-3">
+                            <StatusBadge status={alloc.status} />
+                          </td>
+                          <td className="py-2 text-right font-semibold tabular-nums">
+                            {formatInrFromPaisa(alloc.allocated_paisa)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Audit Trail */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">

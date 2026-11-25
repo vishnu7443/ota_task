@@ -112,6 +112,9 @@ export interface OrderSummary {
   invoice_number?: string | null;
   invoice_doc_status?: string | null;
   invoice_dispatch_status?: string | null;
+  invoice_paid_paisa?: number | null;
+  invoice_outstanding_paisa?: number | null;
+  invoice_payment_status?: string | null;
 }
 
 export interface OrderItemDetail {
@@ -1728,6 +1731,19 @@ export interface DispatchDetail {
   status_history: DispatchStatusHistoryEntry[];
 }
 
+export interface InvoicePaymentAllocation {
+  id: number;
+  payment_id: number;
+  payment_number: string;
+  payment_date: string;
+  payment_mode: string;
+  reference_no: string | null;
+  allocated_paisa: number;
+  status: string;
+  allocated_at: string;
+  reversal_reason: string | null;
+}
+
 export interface InvoiceAuditEntry {
   id: number;
   actor_name: string;
@@ -1764,6 +1780,7 @@ export interface InvoiceDetail extends InvoiceSummary {
   tax_components: InvoiceTaxComponent[];
   credit_notes: CreditNote[];
   dispatches: DispatchDetail[];
+  allocations?: InvoicePaymentAllocation[];
   audit_trail: InvoiceAuditEntry[];
 }
 
@@ -1915,3 +1932,669 @@ export interface BillingReportsBundle {
   product_sales: ProductSalesSummaryRow[];
   outstanding_invoices: SalesInvoiceRegisterRow[];
 }
+
+// ── Phase 9: Payments, Accounts Receivable, Product Costing & Profitability ────────
+
+export interface ProductionOverhead {
+  id: number;
+  production_run_id: number | null;
+  period_month: string;
+  overhead_type: string;
+  allocation_scope: string;
+  amount_paisa: number;
+  notes: string | null;
+  is_voided: boolean;
+  void_reason: string | null;
+  voided_by_name: string | null;
+  voided_at: string | null;
+  recorded_by_name: string;
+  recorded_at: string;
+}
+
+export interface MaterialCostLine {
+  material_id: number;
+  material_code: string;
+  material_name: string;
+  issue_phase: string;
+  display_uom: string;
+  planned_qty_base: string;
+  actual_consumed_qty_base: string;
+  damaged_qty_base: string;
+  wasted_qty_base: string;
+  returned_unused_qty_base: string;
+  planned_cost_paisa: number;
+  actual_cost_paisa: number;
+  damaged_cost_paisa: number;
+  wasted_cost_paisa: number;
+  cost_variance_paisa: number;
+}
+
+export interface ProductionCostSummary {
+  id: number;
+  production_run_id: number;
+  run_number: string;
+  run_date: string;
+  pack_size_id: number;
+  sku_code: string;
+  display_name: string;
+  snapshot_version: number;
+  is_current: boolean;
+  cost_status: "PRELIMINARY" | "FINALIZED";
+  valuation_method: string;
+  planned_raw_cost_paisa: number;
+  planned_pkg_cost_paisa: number;
+  planned_overhead_cost_paisa: number;
+  planned_total_cost_paisa: number;
+  planned_cost_per_packet_paisa: string;
+  raw_material_cost_paisa: number;
+  good_packaging_cost_paisa: number;
+  damaged_packaging_cost_paisa: number;
+  packaging_cost_paisa: number;
+  raw_wastage_cost_paisa: number;
+  rejected_output_cost_impact_paisa: number;
+  direct_labour_paisa: number;
+  gas_power_paisa: number;
+  other_direct_overhead_paisa: number;
+  direct_overhead_paisa: number;
+  allocated_overhead_paisa: number;
+  total_cost_paisa: number;
+  expected_output_pkts: number;
+  good_packets: number;
+  rejected_packets: number;
+  cost_per_packet_paisa: number | null;
+  exact_cost_per_packet_paisa: string | null;
+  selling_price_snapshot_paisa: number;
+  gross_margin_per_pkt_paisa: number | null;
+  gross_margin_pct: string | null;
+  material_variance_paisa: number;
+  cost_per_pkt_variance_paisa: number | null;
+  material_lines: MaterialCostLine[];
+  notes: string | null;
+  computed_by_name: string;
+  computed_at: string;
+}
+
+export interface RunCostingDetail {
+  production_run_id: number;
+  run_number: string;
+  sku_code: string;
+  display_name: string;
+  run_status: string;
+  run_date: string;
+  current_summary: ProductionCostSummary | null;
+  history_snapshots: ProductionCostSummary[];
+  overheads: ProductionOverhead[];
+}
+
+export interface ProductCostAggregate {
+  pack_size_id: number;
+  sku_code: string;
+  display_name: string;
+  run_count: number;
+  total_good_packets: number;
+  total_rejected_packets: number;
+  total_raw_cost_paisa: number;
+  total_pkg_cost_paisa: number;
+  total_overhead_cost_paisa: number;
+  total_cost_paisa: number;
+  weighted_avg_cost_per_pkt_paisa: number;
+  latest_cost_per_pkt_paisa: number;
+  selling_price_paisa: number;
+  unit_gross_margin_paisa: number;
+  unit_gross_margin_pct: string;
+}
+
+export interface CostingDashboardData {
+  valuation_method: string;
+  total_costed_runs: number;
+  total_finalized_runs: number;
+  total_good_packets: number;
+  total_batch_cost_paisa: number;
+  total_wastage_and_damage_paisa: number;
+  runs: ProductionCostSummary[];
+  product_summaries: ProductCostAggregate[];
+  monthly_pools: ProductionOverhead[];
+}
+
+export interface PaymentAllocationDetail {
+  id: number;
+  payment_id: number;
+  payment_number: string;
+  invoice_id: number;
+  invoice_number: string;
+  invoice_date: string;
+  due_date: string;
+  invoice_grand_total_paisa: number;
+  invoice_outstanding_paisa: number;
+  allocated_paisa: number;
+  status: string;
+  allocated_by_name: string;
+  allocated_at: string;
+  reversed_by_name: string | null;
+  reversed_at: string | null;
+  reversal_reason: string | null;
+  notes: string | null;
+}
+
+export interface PaymentRefundDetail {
+  id: number;
+  refund_number: string;
+  financial_year: string;
+  payment_id: number;
+  customer_id: number;
+  refund_date: string;
+  amount_paisa: number;
+  refund_mode: string;
+  reference_no: string | null;
+  reason: string;
+  status: string;
+  refunded_by_name: string;
+  refunded_at: string;
+}
+
+export interface PaymentDetail {
+  id: number;
+  payment_number: string;
+  financial_year: string;
+  customer_id: number;
+  customer_code: string;
+  customer_name: string;
+  payment_date: string;
+  amount_paisa: number;
+  allocated_paisa: number;
+  refunded_paisa: number;
+  unallocated_paisa: number;
+  payment_mode: string;
+  reference_no: string | null;
+  remarks: string | null;
+  is_advance: boolean;
+  idempotency_key: string;
+  status: string;
+  reversal_reason: string | null;
+  reversed_by_name: string | null;
+  reversed_at: string | null;
+  recorded_by_name: string;
+  recorded_at: string;
+  version: number;
+  allocations: PaymentAllocationDetail[];
+  refunds: PaymentRefundDetail[];
+}
+
+export interface PaginatedPayments {
+  items: PaymentDetail[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface OpenInvoiceForAllocation {
+  invoice_id: number;
+  invoice_number: string;
+  order_number: string;
+  invoice_date: string;
+  due_date: string;
+  grand_total_paisa: number;
+  credited_paisa: number;
+  paid_paisa: number;
+  outstanding_paisa: number;
+  payment_status: string;
+  days_past_due: number;
+  is_overdue: boolean;
+}
+
+export interface CustomerArSummary {
+  customer_id: number;
+  customer_code: string;
+  customer_name: string;
+  customer_type: string;
+  gstin: string | null;
+  state_name: string;
+  credit_days: number;
+  salesman_name: string | null;
+  total_invoiced_paisa: number;
+  total_credited_paisa: number;
+  total_payments_received_paisa: number;
+  total_refunded_paisa: number;
+  total_allocated_paisa: number;
+  advance_balance_paisa: number;
+  total_outstanding_paisa: number;
+  net_receivable_paisa: number;
+  overdue_balance_paisa: number;
+  pending_invoices_count: number;
+  overdue_invoices_count: number;
+}
+
+export interface PaginatedCustomerAr {
+  items: CustomerArSummary[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  summary_total_invoiced_paisa: number;
+  summary_total_received_paisa: number;
+  summary_total_outstanding_paisa: number;
+  summary_total_overdue_paisa: number;
+  summary_total_advance_paisa: number;
+}
+
+export interface AgeingInvoiceRow {
+  invoice_id: number;
+  invoice_number: string;
+  customer_id: number;
+  customer_name: string;
+  invoice_date: string;
+  due_date: string;
+  days_past_due: number;
+  is_overdue: boolean;
+  ageing_bucket: string;
+  original_paisa: number;
+  credited_paisa: number;
+  paid_paisa: number;
+  outstanding_paisa: number;
+  payment_status: string;
+}
+
+export interface AgeingCustomerRow {
+  customer_id: number;
+  customer_code: string;
+  customer_name: string;
+  not_due_paisa: number;
+  overdue_1_30_paisa: number;
+  bucket_0_30_paisa: number;
+  bucket_31_60_paisa: number;
+  bucket_61_90_paisa: number;
+  bucket_90_plus_paisa: number;
+  total_outstanding_paisa: number;
+  overdue_total_paisa: number;
+}
+
+export interface AgeingReport {
+  as_of_date: string;
+  not_due_paisa: number;
+  overdue_1_30_paisa: number;
+  bucket_0_30_paisa: number;
+  bucket_31_60_paisa: number;
+  bucket_61_90_paisa: number;
+  bucket_90_plus_paisa: number;
+  total_outstanding_paisa: number;
+  overdue_total_paisa: number;
+  customers: AgeingCustomerRow[];
+  invoices: AgeingInvoiceRow[];
+  total_invoices: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface CustomerStatementEntry {
+  entry_date: string;
+  occurred_at: string;
+  entry_type: string;
+  reference_number: string;
+  description: string;
+  debit_paisa: number;
+  credit_paisa: number;
+  running_balance_paisa: number;
+  linked_invoice_id: number | null;
+  linked_payment_id: number | null;
+}
+
+export interface CustomerStatement {
+  customer_id: number;
+  customer_code: string;
+  customer_name: string;
+  gstin: string | null;
+  state_name: string;
+  credit_days: number;
+  total_invoiced_paisa: number;
+  total_credited_paisa: number;
+  total_payments_received_paisa: number;
+  total_refunded_paisa: number;
+  advance_balance_paisa: number;
+  total_outstanding_paisa: number;
+  net_balance_paisa: number;
+  open_invoices: OpenInvoiceForAllocation[];
+  entries: CustomerStatementEntry[];
+}
+
+export interface ProductProfitabilityRow {
+  pack_size_id: number;
+  sku_code: string;
+  display_name: string;
+  hsn_code: string;
+  invoiced_qty_pkts: number;
+  returned_qty_pkts: number;
+  net_sold_qty_pkts: number;
+  gross_revenue_paisa: number;
+  credited_revenue_paisa: number;
+  net_revenue_paisa: number;
+  gst_collected_paisa: number;
+  dispatched_cogs_paisa: number;
+  pending_dispatch_estimated_cogs_paisa: number;
+  total_cogs_paisa: number;
+  gross_profit_paisa: number;
+  gross_margin_pct: string;
+}
+
+export interface CustomerProfitabilityRow {
+  customer_id: number;
+  customer_code: string;
+  customer_name: string;
+  customer_type: string;
+  invoice_count: number;
+  net_revenue_paisa: number;
+  gst_collected_paisa: number;
+  total_cogs_paisa: number;
+  gross_profit_paisa: number;
+  gross_margin_pct: string;
+  cash_received_paisa: number;
+  outstanding_receivables_paisa: number;
+}
+
+export interface OrderProfitabilityRow {
+  sales_order_id: number;
+  order_number: string;
+  order_date: string;
+  invoice_id: number;
+  invoice_number: string;
+  invoice_date: string;
+  customer_name: string;
+  doc_status: string;
+  net_revenue_paisa: number;
+  gst_collected_paisa: number;
+  total_cogs_paisa: number;
+  gross_profit_paisa: number;
+  gross_margin_pct: string;
+  cash_received_paisa: number;
+  outstanding_paisa: number;
+}
+
+export interface DateProfitabilityRow {
+  period_date: string;
+  invoice_count: number;
+  net_revenue_paisa: number;
+  gst_collected_paisa: number;
+  total_cogs_paisa: number;
+  gross_profit_paisa: number;
+  gross_margin_pct: string;
+  cash_collected_on_date_paisa: number;
+}
+
+export interface ProfitabilityReport {
+  gross_revenue_paisa: number;
+  credited_revenue_paisa: number;
+  net_revenue_paisa: number;
+  gst_collected_paisa: number;
+  dispatched_cogs_paisa: number;
+  pending_dispatch_estimated_cogs_paisa: number;
+  total_cogs_paisa: number;
+  gross_profit_paisa: number;
+  gross_margin_pct: string;
+  cash_received_paisa: number;
+  outstanding_receivables_paisa: number;
+  disclaimer: string;
+  by_product: ProductProfitabilityRow[];
+  by_customer: CustomerProfitabilityRow[];
+  by_order: OrderProfitabilityRow[];
+  by_date: DateProfitabilityRow[];
+}
+
+export interface PaymentTrendRow {
+  payment_date: string;
+  payment_count: number;
+  total_received_paisa: number;
+}
+
+export interface CostingSummaryCardRow {
+  production_run_id: number;
+  run_number: string;
+  sku_code: string;
+  display_name: string;
+  cost_status: string;
+  good_packets: number;
+  total_cost_paisa: number;
+  cost_per_packet_paisa: number | null;
+  gross_margin_per_pkt_paisa: number | null;
+  gross_margin_pct: string | null;
+}
+
+export interface FinanceDashboardData {
+  total_invoiced_taxable_paisa: number;
+  total_gst_collected_paisa: number;
+  total_invoiced_gross_paisa: number;
+  total_credited_paisa: number;
+  net_invoiced_sales_paisa: number;
+  payments_received_paisa: number;
+  total_refunded_paisa: number;
+  net_cash_collected_paisa: number;
+  customer_advances_paisa: number;
+  outstanding_receivables_paisa: number;
+  overdue_receivables_paisa: number;
+  total_cogs_paisa: number;
+  gross_profit_paisa: number;
+  gross_margin_pct: string;
+  profitability_disclaimer: string;
+  recent_payments: PaymentDetail[];
+  recent_outstanding_invoices: AgeingInvoiceRow[];
+  payment_trends: PaymentTrendRow[];
+  product_profitability: ProductProfitabilityRow[];
+  costing_summary: CostingSummaryCardRow[];
+}
+
+export interface SalesmanCustomerAr {
+  customer_id: number;
+  customer_code: string;
+  customer_name: string;
+  total_invoiced_paisa: number;
+  total_paid_paisa: number;
+  advance_balance_paisa: number;
+  total_outstanding_paisa: number;
+  open_invoices: OpenInvoiceForAllocation[];
+}
+
+export const costingApi = {
+  getDashboard: (opts?: { dateFrom?: string; dateTo?: string; packSizeId?: number }) => {
+    const p = new URLSearchParams();
+    if (opts?.dateFrom) p.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) p.set("date_to", opts.dateTo);
+    if (opts?.packSizeId) p.set("pack_size_id", String(opts.packSizeId));
+    const qs = p.toString();
+    return request<CostingDashboardData>(`/costing/dashboard${qs ? `?${qs}` : ""}`);
+  },
+  getRunCosting: (runId: number) => request<RunCostingDetail>(`/costing/runs/${runId}`),
+  addRunOverhead: (
+    runId: number,
+    payload: { overhead_type: string; amount_paisa: number; notes?: string | null }
+  ) =>
+    request<RunCostingDetail>(`/costing/runs/${runId}/overheads`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  finalizeRunCosting: (
+    runId: number,
+    payload: {
+      overheads: Array<{ overhead_type: string; amount_paisa: number; notes?: string | null }>;
+      notes?: string | null;
+    }
+  ) =>
+    request<RunCostingDetail>(`/costing/runs/${runId}/finalize`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  voidOverhead: (overheadId: number, reason: string) =>
+    request<{ status: string; overhead_id: number }>(`/costing/overheads/${overheadId}/void`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+  addMonthlyPoolOverhead: (payload: {
+    period_month: string;
+    overhead_type: string;
+    amount_paisa: number;
+    notes?: string | null;
+  }) =>
+    request<ProductionOverhead>("/costing/monthly-pools", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  reallocateMonthlyPool: (periodMonth: string) =>
+    request<{ period_month: string; updated_runs_count: number }>(
+      `/costing/monthly-pools/${periodMonth}/reallocate`,
+      { method: "POST" }
+    ),
+};
+
+export const financeApi = {
+  getDashboard: (opts?: { dateFrom?: string; dateTo?: string }) => {
+    const p = new URLSearchParams();
+    if (opts?.dateFrom) p.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) p.set("date_to", opts.dateTo);
+    const qs = p.toString();
+    return request<FinanceDashboardData>(`/finance/dashboard${qs ? `?${qs}` : ""}`);
+  },
+  getPayments: (opts?: {
+    customerId?: number;
+    status?: string;
+    paymentMode?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    search?: string;
+    page?: number;
+    pageSize?: number;
+  }) => {
+    const p = new URLSearchParams();
+    if (opts?.customerId) p.set("customer_id", String(opts.customerId));
+    if (opts?.status) p.set("status", opts.status);
+    if (opts?.paymentMode) p.set("payment_mode", opts.paymentMode);
+    if (opts?.dateFrom) p.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) p.set("date_to", opts.dateTo);
+    if (opts?.search) p.set("search", opts.search);
+    if (opts?.page) p.set("page", String(opts.page));
+    if (opts?.pageSize) p.set("page_size", String(opts.pageSize));
+    const qs = p.toString();
+    return request<PaginatedPayments>(`/finance/payments${qs ? `?${qs}` : ""}`);
+  },
+  recordPayment: (payload: {
+    customer_id: number;
+    payment_date?: string | null;
+    amount_paisa: number;
+    payment_mode: string;
+    reference_no?: string | null;
+    remarks?: string | null;
+    client_payment_id: string;
+    allocations: Array<{ invoice_id: number; allocated_paisa: number }>;
+  }) =>
+    request<PaymentDetail>("/finance/payments", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getPaymentDetail: (paymentId: number) => request<PaymentDetail>(`/finance/payments/${paymentId}`),
+  allocatePayment: (
+    paymentId: number,
+    payload: {
+      allocations: Array<{ invoice_id: number; allocated_paisa: number }>;
+      notes?: string | null;
+      expected_version?: number;
+    }
+  ) =>
+    request<PaymentDetail>(`/finance/payments/${paymentId}/allocate`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  reverseAllocation: (allocationId: number, reason: string) =>
+    request<PaymentDetail>(`/finance/allocations/${allocationId}/reverse`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+  reversePayment: (paymentId: number, payload: { reason: string; expected_version?: number }) =>
+    request<PaymentDetail>(`/finance/payments/${paymentId}/reverse`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  refundPayment: (
+    paymentId: number,
+    payload: {
+      amount_paisa: number;
+      refund_date?: string | null;
+      refund_mode: string;
+      reference_no?: string | null;
+      reason: string;
+      expected_version?: number;
+    }
+  ) =>
+    request<PaymentDetail>(`/finance/payments/${paymentId}/refund`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  fetchReceiptPdfBlob: async (paymentId: number): Promise<Blob> => {
+    const token = getStoredToken();
+    const res = await fetch(`${API_BASE}/finance/payments/${paymentId}/receipt-pdf`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      throw new ApiClientError(res.status, "PDF_ERROR", "Unable to download payment receipt PDF.");
+    }
+    return res.blob();
+  },
+  getReceivables: (opts?: {
+    asOfDate?: string;
+    customerId?: number;
+    search?: string;
+    onlyOutstanding?: boolean;
+    page?: number;
+    pageSize?: number;
+  }) => {
+    const p = new URLSearchParams();
+    if (opts?.asOfDate) p.set("as_of_date", opts.asOfDate);
+    if (opts?.customerId) p.set("customer_id", String(opts.customerId));
+    if (opts?.search) p.set("search", opts.search);
+    if (opts?.onlyOutstanding) p.set("only_outstanding", "true");
+    if (opts?.page) p.set("page", String(opts.page));
+    if (opts?.pageSize) p.set("page_size", String(opts.pageSize));
+    const qs = p.toString();
+    return request<PaginatedCustomerAr>(`/finance/receivables${qs ? `?${qs}` : ""}`);
+  },
+  getAgeingReport: (opts?: {
+    asOfDate?: string;
+    customerId?: number;
+    search?: string;
+    page?: number;
+    pageSize?: number;
+  }) => {
+    const p = new URLSearchParams();
+    if (opts?.asOfDate) p.set("as_of_date", opts.asOfDate);
+    if (opts?.customerId) p.set("customer_id", String(opts.customerId));
+    if (opts?.search) p.set("search", opts.search);
+    if (opts?.page) p.set("page", String(opts.page));
+    if (opts?.pageSize) p.set("page_size", String(opts.pageSize));
+    const qs = p.toString();
+    return request<AgeingReport>(`/finance/receivables/ageing${qs ? `?${qs}` : ""}`);
+  },
+  getCustomerStatement: (customerId: number, opts?: { dateFrom?: string; dateTo?: string }) => {
+    const p = new URLSearchParams();
+    if (opts?.dateFrom) p.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) p.set("date_to", opts.dateTo);
+    const qs = p.toString();
+    return request<CustomerStatement>(
+      `/finance/receivables/customers/${customerId}/statement${qs ? `?${qs}` : ""}`
+    );
+  },
+  getOpenInvoicesForCustomer: (customerId: number) =>
+    request<OpenInvoiceForAllocation[]>(`/finance/receivables/open-invoices/${customerId}`),
+  getSalesmanCustomerReceivables: () =>
+    request<SalesmanCustomerAr[]>("/finance/my-customers/receivables"),
+  getProfitability: (opts?: {
+    dateFrom?: string;
+    dateTo?: string;
+    customerId?: number;
+    packSizeId?: number;
+  }) => {
+    const p = new URLSearchParams();
+    if (opts?.dateFrom) p.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) p.set("date_to", opts.dateTo);
+    if (opts?.customerId) p.set("customer_id", String(opts.customerId));
+    if (opts?.packSizeId) p.set("pack_size_id", String(opts.packSizeId));
+    const qs = p.toString();
+    return request<ProfitabilityReport>(`/finance/profitability${qs ? `?${qs}` : ""}`);
+  },
+};

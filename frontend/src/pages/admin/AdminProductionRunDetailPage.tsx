@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ApiClientError, api } from "@/lib/api";
+import { ApiClientError, api, costingApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { formatDateTimeIst, formatInrFromPaisa, formatOrderDate } from "@/lib/money";
 import { compatibleUomsForMaterial, formatBaseQty, formatDisplayQty, toNumber } from "@/lib/units";
@@ -71,6 +71,12 @@ export function AdminProductionRunDetailPage() {
   const ledgerQuery = useQuery({
     queryKey: ["production-run-ledger", id],
     queryFn: () => api.getInventoryLedger({ productionRunId: id, limit: 100 }),
+    enabled: Boolean(id),
+  });
+
+  const costingQuery = useQuery({
+    queryKey: ["production-run-costing", id],
+    queryFn: () => costingApi.getRunCosting(Number(id)),
     enabled: Boolean(id),
   });
 
@@ -725,6 +731,79 @@ export function AdminProductionRunDetailPage() {
             </table>
           </CardContent>
         </Card>
+
+        {/* Batch Cost Summary (Phase 9) */}
+        {costingQuery.data?.current_summary && (
+          <Card className="border-indigo-200 bg-indigo-50/30">
+            <CardHeader className="pb-3 flex flex-row items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-base">
+                  Batch Cost Summary (v{costingQuery.data.current_summary.snapshot_version} ·{" "}
+                  {costingQuery.data.current_summary.cost_status})
+                </CardTitle>
+                <CardDescription>
+                  FIFO raw &amp; packaging lots + direct &amp; monthly allocated overheads
+                </CardDescription>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/admin/costing">Open Product Costing</Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+              <div className="rounded-lg bg-white border p-2.5">
+                <div className="text-muted-foreground">FIFO Raw Material</div>
+                <div className="text-sm font-bold tabular-nums mt-0.5">
+                  {formatInrFromPaisa(costingQuery.data.current_summary.raw_material_cost_paisa)}
+                </div>
+              </div>
+              <div className="rounded-lg bg-white border p-2.5">
+                <div className="text-muted-foreground">Packaging (incl. dmg)</div>
+                <div className="text-sm font-bold tabular-nums mt-0.5">
+                  {formatInrFromPaisa(costingQuery.data.current_summary.packaging_cost_paisa)}
+                </div>
+              </div>
+              <div className="rounded-lg bg-white border p-2.5">
+                <div className="text-muted-foreground">Total Overheads</div>
+                <div className="text-sm font-bold tabular-nums mt-0.5">
+                  {formatInrFromPaisa(
+                    costingQuery.data.current_summary.direct_overhead_paisa +
+                      costingQuery.data.current_summary.allocated_overhead_paisa
+                  )}
+                </div>
+              </div>
+              <div className="rounded-lg bg-white border p-2.5">
+                <div className="text-muted-foreground">Total Batch Cost</div>
+                <div className="text-sm font-bold tabular-nums mt-0.5">
+                  {formatInrFromPaisa(costingQuery.data.current_summary.total_cost_paisa)}
+                </div>
+              </div>
+              <div className="rounded-lg bg-white border p-2.5">
+                <div className="text-muted-foreground">Actual Cost / Pkt</div>
+                <div className="text-sm font-bold tabular-nums text-indigo-700 mt-0.5">
+                  {costingQuery.data.current_summary.cost_per_packet_paisa != null
+                    ? formatInrFromPaisa(costingQuery.data.current_summary.cost_per_packet_paisa)
+                    : "—"}
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  Std: ₹{(Number(costingQuery.data.current_summary.planned_cost_per_packet_paisa) / 100).toFixed(2)}
+                </div>
+              </div>
+              <div className="rounded-lg bg-white border p-2.5">
+                <div className="text-muted-foreground">Gross Margin / Pkt</div>
+                <div className="text-sm font-bold tabular-nums text-emerald-700 mt-0.5">
+                  {costingQuery.data.current_summary.gross_margin_per_pkt_paisa != null
+                    ? formatInrFromPaisa(costingQuery.data.current_summary.gross_margin_per_pkt_paisa)
+                    : "—"}
+                </div>
+                {costingQuery.data.current_summary.gross_margin_pct != null && (
+                  <div className="text-[11px] text-emerald-700">
+                    {costingQuery.data.current_summary.gross_margin_pct}%
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Variances Table */}
         {run.variances.length > 0 && (

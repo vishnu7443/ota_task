@@ -6,19 +6,24 @@ import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { AdminBomPage } from "@/pages/admin/AdminBomPage";
 import { AdminBillingDashboardPage } from "@/pages/admin/AdminBillingDashboardPage";
 import { AdminBillingReportsPage } from "@/pages/admin/AdminBillingReportsPage";
+import { AdminCostingPage } from "@/pages/admin/AdminCostingPage";
 import { AdminCreditNotesPage } from "@/pages/admin/AdminCreditNotesPage";
 import { AdminDispatchDashboardPage } from "@/pages/admin/AdminDispatchDashboardPage";
 import { AdminDispatchDetailPage } from "@/pages/admin/AdminDispatchDetailPage";
+import { AdminFinanceDashboardPage } from "@/pages/admin/AdminFinanceDashboardPage";
 import { AdminGoodsReceiptsPage } from "@/pages/admin/AdminGoodsReceiptsPage";
 import { AdminIncomingOrdersPage } from "@/pages/admin/AdminIncomingOrdersPage";
 import { AdminInventoryDashboardPage } from "@/pages/admin/AdminInventoryDashboardPage";
 import { AdminInventoryLedgerPage } from "@/pages/admin/AdminInventoryLedgerPage";
 import { AdminInvoiceDetailPage } from "@/pages/admin/AdminInvoiceDetailPage";
 import { AdminOrderDetailPage } from "@/pages/admin/AdminOrderDetailPage";
+import { AdminPaymentsPage } from "@/pages/admin/AdminPaymentsPage";
 import { AdminProductionDashboardPage } from "@/pages/admin/AdminProductionDashboardPage";
 import { AdminProductionRunDetailPage } from "@/pages/admin/AdminProductionRunDetailPage";
 import { AdminProductionVarianceReportPage } from "@/pages/admin/AdminProductionVarianceReportPage";
+import { AdminProfitabilityPage } from "@/pages/admin/AdminProfitabilityPage";
 import { AdminPurchaseOrdersPage } from "@/pages/admin/AdminPurchaseOrdersPage";
+import { AdminReceivablesPage } from "@/pages/admin/AdminReceivablesPage";
 import { AdminStockAdjustmentsPage } from "@/pages/admin/AdminStockAdjustmentsPage";
 import { AdminStockReportsPage } from "@/pages/admin/AdminStockReportsPage";
 import { AdminSuppliersPage } from "@/pages/admin/AdminSuppliersPage";
@@ -282,6 +287,50 @@ export function App() {
         element={
           <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
             <AdminDispatchDetailPage />
+          </RequireRole>
+        }
+      />
+
+      {/* Phase 9: Payments, Accounts Receivable, Product Costing & Profitability Routes */}
+      <Route
+        path="/admin/costing"
+        element={
+          <RequireRole
+            allowedRoles={["FACTORY_ADMIN", "PRODUCTION_SUPERVISOR", "OWNER", "ACCOUNTANT_AUDITOR"]}
+          >
+            <AdminCostingPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/finance"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminFinanceDashboardPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/finance/payments"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminPaymentsPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/finance/receivables"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminReceivablesPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/finance/profitability"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminProfitabilityPage />
           </RequireRole>
         }
       />

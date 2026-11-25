@@ -39,6 +39,19 @@ const STATUS_VARIANTS: Record<string, { label: string; variant: "default" | "sec
   DELIVERY_EXCEPTION: { label: "Delivery Exception", variant: "destructive" },
   INTRA_STATE: { label: "Intra-State (CGST+SGST)", variant: "secondary" },
   INTER_STATE: { label: "Inter-State (IGST)", variant: "default" },
+  RECORDED: { label: "Advance / Unallocated", variant: "warning" },
+  PARTIALLY_ALLOCATED: { label: "Partially Allocated", variant: "default" },
+  ALLOCATED: { label: "Allocated", variant: "success" },
+  PARTIALLY_REFUNDED: { label: "Partially Refunded", variant: "warning" },
+  REFUNDED: { label: "Refunded", variant: "outline" },
+  REVERSED: { label: "Reversed", variant: "destructive" },
+  PRELIMINARY: { label: "Preliminary (Mat+Pkg)", variant: "warning" },
+  FINALIZED: { label: "Finalized Cost", variant: "success" },
+  NOT_DUE: { label: "Not Due", variant: "secondary" },
+  "0_30": { label: "1–30 Days Overdue", variant: "warning" },
+  "31_60": { label: "31–60 Days Overdue", variant: "warning" },
+  "61_90": { label: "61–90 Days Overdue", variant: "destructive" },
+  ABOVE_90: { label: "> 90 Days Overdue", variant: "destructive" },
 };
 
 export function StatusBadge({ status }: { status: string }) {

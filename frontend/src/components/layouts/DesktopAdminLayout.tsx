@@ -6,17 +6,21 @@ import {
   BarChart3,
   BookOpen,
   Boxes,
+  Calculator,
   ClipboardCheck,
   Factory,
   FileSpreadsheet,
   FileText,
+  IndianRupee,
   Layers,
   LayoutDashboard,
   LogOut,
   PackageCheck,
   Receipt,
+  TrendingUp,
   Truck,
   Users,
+  Wallet,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -159,30 +163,29 @@ export function DesktopAdminLayout({
               </p>
               <nav className="space-y-1">
                 <SidebarLink to="/admin/production" end icon={Activity} label="Production Runs" />
-                <SidebarLink to="/admin/production/boms" icon={Layers} label="BOM & Recipes" />
+                  <SidebarLink to="/admin/production/boms" icon={Layers} label="BOM & Recipes" />
                 <SidebarLink
                   to="/admin/production/variances"
                   icon={BarChart3}
                   label="Variance Report"
                 />
+                <SidebarLink to="/admin/costing" icon={Calculator} label="Product Costing" />
               </nav>
             </div>
 
-            <div className="border-t pt-4">
-              <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Upcoming Phases
-              </p>
-              <div className="mt-2 space-y-1 opacity-55">
-                <div className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground">
-                  <FileSpreadsheet className="h-3.5 w-3.5" />
-                  <span>Payments &amp; AR Collections</span>
-                </div>
-                <div className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground">
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  <span>Step 8 Final Costing</span>
-                </div>
+            {canViewSalesOrders && (
+              <div>
+                <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Finance, AR &amp; Margins
+                </p>
+                <nav className="space-y-1">
+                  <SidebarLink to="/admin/finance" end icon={IndianRupee} label="Financial Overview" />
+                  <SidebarLink to="/admin/finance/payments" icon={Wallet} label="Payments & Receipts" />
+                  <SidebarLink to="/admin/finance/receivables" icon={FileSpreadsheet} label="Receivables & Ageing" />
+                  <SidebarLink to="/admin/finance/profitability" icon={TrendingUp} label="Profitability & COGS" />
+                </nav>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="mt-6 border-t pt-4">

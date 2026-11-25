@@ -5,7 +5,7 @@ import { MobileSalesLayout } from "@/components/layouts/MobileSalesLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { api, financeApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { formatInrFromPaisa, formatOrderDate } from "@/lib/money";
 
@@ -21,6 +21,12 @@ export function SalesmanHomePage() {
     queryKey: ["salesman-orders", 1],
     queryFn: () => api.getMyOrders(1, 5),
   });
+
+  const arQuery = useQuery({
+    queryKey: ["salesman-customer-ar"],
+    queryFn: () => financeApi.getSalesmanCustomerReceivables(),
+  });
+  const arByCustomerId = new Map((arQuery.data ?? []).map((row) => [row.customer_id, row]));
 
   const customers = customersQuery.data ?? [];
   const orders = ordersQuery.data?.items ?? [];
@@ -76,33 +82,50 @@ export function SalesmanHomePage() {
             </Card>
           ) : (
             <div className="space-y-2">
-              {customers.map((c) => (
-                <Link key={c.id} to={`/salesman/new-order?customerId=${c.id}`} className="block">
-                  <Card className="transition-colors hover:border-primary/50">
-                    <CardContent className="flex items-center justify-between p-4">
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Store className="h-4 w-4 text-primary shrink-0" />
-                          <span className="font-semibold text-sm truncate">{c.name}</span>
-                          <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase text-secondary-foreground">
-                            {c.customer_type}
-                          </span>
+              {customers.map((c) => {
+                const ar = arByCustomerId.get(c.id);
+                return (
+                  <Link key={c.id} to={`/salesman/new-order?customerId=${c.id}`} className="block">
+                    <Card className="transition-colors hover:border-primary/50">
+                      <CardContent className="flex items-center justify-between p-4">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Store className="h-4 w-4 text-primary shrink-0" />
+                            <span className="font-semibold text-sm truncate">{c.name}</span>
+                            <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase text-secondary-foreground">
+                              {c.customer_type}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                            <span>
+                              {c.default_shipping_address?.city
+                                ? `${c.default_shipping_address.city}, `
+                                : ""}
+                              {c.primary_state_name} ({c.primary_state_code})
+                            </span>
+                          </div>
+                          {ar && (ar.total_outstanding_paisa > 0 || ar.advance_balance_paisa > 0) && (
+                            <div className="flex flex-wrap items-center gap-2 pt-0.5 text-[11px] tabular-nums">
+                              {ar.total_outstanding_paisa > 0 && (
+                                <span className="rounded bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-900">
+                                  AR Due: {formatInrFromPaisa(ar.total_outstanding_paisa)}
+                                </span>
+                              )}
+                              {ar.advance_balance_paisa > 0 && (
+                                <span className="rounded bg-emerald-100 px-1.5 py-0.5 font-semibold text-emerald-900">
+                                  Advance: {formatInrFromPaisa(ar.advance_balance_paisa)}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <MapPin className="h-3.5 w-3.5 shrink-0" />
-                          <span>
-                            {c.default_shipping_address?.city
-                              ? `${c.default_shipping_address.city}, `
-                              : ""}
-                            {c.primary_state_name} ({c.primary_state_code})
-                          </span>
-                        </div>
-                      </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
+                        <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </section>

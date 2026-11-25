@@ -256,9 +256,23 @@ export function SalesmanOrderDetailPage() {
                           Total: {formatInrFromPaisa(order.invoice_grand_total_paisa)}
                         </div>
                       )}
+                      {order.invoice_doc_status === "ISSUED" && (
+                        <div className="text-emerald-900 mt-0.5">
+                          Paid: {formatInrFromPaisa(order.invoice_paid_paisa ?? 0)} · Balance:{" "}
+                          <span className="font-semibold">
+                            {formatInrFromPaisa(
+                              order.invoice_outstanding_paisa ??
+                                Math.max(0, (order.invoice_grand_total_paisa ?? 0) - (order.invoice_paid_paisa ?? 0))
+                            )}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex flex-col items-end gap-1">
                       <StatusBadge status={order.invoice_doc_status ?? "DRAFT"} />
+                      {order.invoice_doc_status === "ISSUED" && order.invoice_payment_status && (
+                        <StatusBadge status={order.invoice_payment_status} />
+                      )}
                     </div>
                   </div>
                   {order.invoice_doc_status === "ISSUED" && (
