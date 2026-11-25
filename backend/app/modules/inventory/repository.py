@@ -293,6 +293,7 @@ def list_inventory_movements(
     item_category: str | None = None,
     material_id: int | None = None,
     pack_size_id: int | None = None,
+    production_run_id: int | None = None,
     movement_type: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
@@ -305,6 +306,8 @@ def list_inventory_movements(
         stmt = stmt.where(InventoryMovement.material_id == material_id)
     if pack_size_id is not None:
         stmt = stmt.where(InventoryMovement.pack_size_id == pack_size_id)
+    if production_run_id is not None:
+        stmt = stmt.where(InventoryMovement.production_run_id == production_run_id)
     if movement_type:
         stmt = stmt.where(InventoryMovement.movement_type == movement_type)
     if date_from is not None:

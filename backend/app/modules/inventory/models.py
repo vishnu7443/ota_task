@@ -337,7 +337,8 @@ class InventoryMovement(Base):
             "(source_doc_type = 'OPENING_BALANCE' AND opening_balance_id IS NOT NULL) OR "
             "(source_doc_type = 'PURCHASE_RECEIPT' AND purchase_receipt_item_id IS NOT NULL) OR "
             "(source_doc_type IN ('STOCK_ADJUSTMENT', 'SUPPLIER_RETURN') AND stock_adjustment_id IS NOT NULL) OR "
-            "source_doc_type IN ('PRODUCTION_RUN', 'DISPATCH', 'CREDIT_NOTE')",
+            "(source_doc_type = 'PRODUCTION_RUN' AND production_run_id IS NOT NULL) OR "
+            "source_doc_type IN ('DISPATCH', 'CREDIT_NOTE')",
             name="mov_source_required",
         ),
         CheckConstraint(
@@ -393,6 +394,11 @@ class InventoryMovement(Base):
         ForeignKey("inventory.stock_adjustments.id", ondelete="RESTRICT"),
         nullable=True,
     )
+    production_run_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("production.production_runs.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -446,3 +452,27 @@ class StockReservation(Base):
     )
     released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     release_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class CostLotConsumption(Base):
+    """Exact M:N attribution between outbound movements and FIFO CostLot layers consumed."""
+
+    __tablename__ = "cost_lot_consumptions"
+    __table_args__ = (
+        CheckConstraint("consumed_qty_base > 0", name="clc_qty_positive"),
+        CheckConstraint("unit_cost_paisa_per_base >= 0", name="clc_unit_cost_non_neg"),
+        CheckConstraint("cost_paisa >= 0", name="clc_total_cost_non_neg"),
+        UniqueConstraint("inventory_movement_id", "cost_lot_id", name="uq_clc_mov_lot"),
+        {"schema": "inventory"},
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    inventory_movement_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("inventory.inventory_movements.id", ondelete="RESTRICT"), nullable=False
+    )
+    cost_lot_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("inventory.cost_lots.id", ondelete="RESTRICT"), nullable=False
+    )
+    consumed_qty_base: Mapped[Decimal] = mapped_column(Numeric(18, 3), nullable=False)
+    unit_cost_paisa_per_base: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False)
+    cost_paisa: Mapped[int] = mapped_column(BigInteger, nullable=False)

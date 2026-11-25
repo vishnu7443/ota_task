@@ -9,6 +9,7 @@ from app.modules.audit import models as audit_models  # noqa: F401
 from app.modules.iam import models as iam_models  # noqa: F401
 from app.modules.inventory import models as inventory_models  # noqa: F401
 from app.modules.orders import models as orders_models  # noqa: F401
+from app.modules.production import models as production_models  # noqa: F401
 from app.modules.purchasing import models as purchasing_models  # noqa: F401
 from app.modules.sales import models as sales_models  # noqa: F401
 

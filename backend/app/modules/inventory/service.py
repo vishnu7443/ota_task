@@ -43,12 +43,14 @@ _NEGATIVE_ONLY_ADJUSTMENT_TYPES = {"DAMAGED", "EXPIRED", "MISSING", "SUPPLIER_RE
 _INBOUND_MOVEMENT_TYPES = {
     "PURCHASE_IN",
     "PROD_OUTPUT_IN",
-    "PROD_RETURN_IN",
     "CREDIT_RETURN_IN",
 }
 _ISSUED_MOVEMENT_TYPES = {
     "PROD_ISSUE_OUT",
     "PACKAGING_DAMAGE_OUT",
+}
+_PRODUCTION_RETURN_MOVEMENT_TYPES = {
+    "PROD_RETURN_IN",
 }
 _ADJUSTED_MOVEMENT_TYPES = {
     "ADJUSTMENT",
@@ -401,6 +403,8 @@ def get_inventory_overview(
             bucket["received"] += qty
         elif mov.movement_type in _ISSUED_MOVEMENT_TYPES:
             bucket["issued"] += abs(qty)
+        elif mov.movement_type in _PRODUCTION_RETURN_MOVEMENT_TYPES:
+            bucket["issued"] -= qty
         elif mov.movement_type == "DISPATCH_OUT":
             bucket["dispatched"] += abs(qty)
         elif mov.movement_type in _ADJUSTED_MOVEMENT_TYPES:
@@ -516,6 +520,7 @@ def list_ledger_entries(
     item_category: str | None = None,
     material_id: int | None = None,
     pack_size_id: int | None = None,
+    production_run_id: int | None = None,
     movement_type: str | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
@@ -531,6 +536,7 @@ def list_ledger_entries(
         item_category=item_category,
         material_id=material_id,
         pack_size_id=pack_size_id,
+        production_run_id=production_run_id,
         movement_type=movement_type,
         date_from=start_dt,
         date_to=end_dt,
@@ -600,6 +606,7 @@ def list_ledger_entries(
                 opening_balance_id=mov.opening_balance_id,
                 purchase_receipt_item_id=mov.purchase_receipt_item_id,
                 stock_adjustment_id=mov.stock_adjustment_id,
+                production_run_id=mov.production_run_id,
             )
         )
     return result
