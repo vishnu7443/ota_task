@@ -17,6 +17,8 @@ from app.core.database import SessionLocal
 from app.core.security import hash_password
 from app.modules.iam.models import CompanyProfile, Role, User
 from app.modules.inventory import service as inventory_service
+from app.modules.inventory.models import Material, UnitConversion
+from app.modules.purchasing.models import Supplier
 from app.modules.sales.models import (
     Customer,
     CustomerAddress,
@@ -256,12 +258,295 @@ def seed_benchmark_master_data(db: Session) -> dict[str, int]:
         created_by=users_map["admin"].id,
     )
 
+    # 9. Unit Conversions (MASS, VOLUME, COUNT)
+    uom_defs = [
+        ("kg", "g", "MASS", Decimal("1000.000000")),
+        ("g", "g", "MASS", Decimal("1.000000")),
+        ("L", "ml", "VOLUME", Decimal("1000.000000")),
+        ("ml", "ml", "VOLUME", Decimal("1.000000")),
+        ("piece", "piece", "COUNT", Decimal("1.000000")),
+        ("packet", "packet", "COUNT", Decimal("1.000000")),
+    ]
+    for from_uom, to_base_uom, dim, mult in uom_defs:
+        existing_uom = db.execute(
+            select(UnitConversion).where(
+                UnitConversion.from_uom == from_uom,
+                UnitConversion.to_base_uom == to_base_uom,
+            )
+        ).scalar_one_or_none()
+        if existing_uom is None:
+            db.add(
+                UnitConversion(
+                    from_uom=from_uom,
+                    to_base_uom=to_base_uom,
+                    unit_dimension=dim,
+                    multiplier=mult,
+                )
+            )
+            db.flush()
+
+    # 10. Official Raw Materials, Packaging Materials & Opening Balances (NIT Trichy Section 5)
+    material_defs = [
+        {
+            "code": "MAT-FLR",
+            "name": "Flour",
+            "category": "RAW_MATERIAL",
+            "dim": "MASS",
+            "base_uom": "g",
+            "display_uom": "kg",
+            "reorder_base": Decimal("50000.000"),
+            "opening_qty": Decimal(100),
+            "opening_uom": "kg",
+            "opening_rate_paisa": 4200,
+        },
+        {
+            "code": "MAT-OIL",
+            "name": "Cooking oil",
+            "category": "RAW_MATERIAL",
+            "dim": "VOLUME",
+            "base_uom": "ml",
+            "display_uom": "L",
+            "reorder_base": Decimal("15000.000"),
+            "opening_qty": Decimal(30),
+            "opening_uom": "L",
+            "opening_rate_paisa": 14000,
+        },
+        {
+            "code": "MAT-SPC",
+            "name": "Salt and spice mix",
+            "category": "RAW_MATERIAL",
+            "dim": "MASS",
+            "base_uom": "g",
+            "display_uom": "kg",
+            "reorder_base": Decimal("2000.000"),
+            "opening_qty": Decimal(5),
+            "opening_uom": "kg",
+            "opening_rate_paisa": 20000,
+        },
+        {
+            "code": "MAT-PCH-200",
+            "name": "200 g pouch",
+            "category": "PACKAGING_MATERIAL",
+            "dim": "COUNT",
+            "base_uom": "piece",
+            "display_uom": "piece",
+            "reorder_base": Decimal("200.000"),
+            "opening_qty": Decimal(500),
+            "opening_uom": "piece",
+            "opening_rate_paisa": 250,
+        },
+        {
+            "code": "MAT-CTN-20",
+            "name": "Carton (20 pkts)",
+            "category": "PACKAGING_MATERIAL",
+            "dim": "COUNT",
+            "base_uom": "piece",
+            "display_uom": "piece",
+            "reorder_base": Decimal("15.000"),
+            "opening_qty": Decimal(30),
+            "opening_uom": "piece",
+            "opening_rate_paisa": 1500,
+        },
+    ]
+    materials_map: dict[str, Material] = {}
+    for mdef in material_defs:
+        mat = db.execute(select(Material).where(Material.code == mdef["code"])).scalar_one_or_none()
+        if mat is None:
+            mat = Material(
+                code=mdef["code"],
+                name=mdef["name"],
+                material_category=mdef["category"],
+                unit_dimension=mdef["dim"],
+                base_uom=mdef["base_uom"],
+                display_uom=mdef["display_uom"],
+                reorder_level_base=mdef["reorder_base"],
+                is_active=True,
+            )
+            db.add(mat)
+            db.flush()
+        materials_map[mdef["code"]] = mat
+
+        inventory_service.seed_opening_material(
+            db,
+            batch_ref="SEED-BENCHMARK-2026",
+            material=mat,
+            entered_qty=mdef["opening_qty"],
+            entered_uom=mdef["opening_uom"],
+            unit_rate_paisa_per_entered_uom=mdef["opening_rate_paisa"],
+            as_of_date=date(2026, 11, 1),
+            created_by=users_map["admin"].id,
+        )
+
+    # 11. Benchmark Supplier (Cauvery Agro Mills, Tamil Nadu)
+    supplier = db.execute(select(Supplier).where(Supplier.code == "SUP-001")).scalar_one_or_none()
+    if supplier is None:
+        supplier = Supplier(
+            code="SUP-001",
+            name="Cauvery Agro Mills",
+            contact_person="S. Sundaram",
+            phone="+919842212345",
+            email="dispatch@cauveryagro.example",
+            gstin="33AAACS7777P1Z1",
+            state_name="Tamil Nadu",
+            state_code="33",
+            address="No. 88, Gandhi Market Road, Tiruchirappalli, Tamil Nadu - 620008",
+            is_active=True,
+        )
+        db.add(supplier)
+        db.flush()
+
+    # 9. Unit Conversions (MASS, VOLUME, COUNT)
+    uom_defs = [
+        ("kg", "g", "MASS", Decimal("1000.000000")),
+        ("g", "g", "MASS", Decimal("1.000000")),
+        ("L", "ml", "VOLUME", Decimal("1000.000000")),
+        ("ml", "ml", "VOLUME", Decimal("1.000000")),
+        ("piece", "piece", "COUNT", Decimal("1.000000")),
+        ("packet", "packet", "COUNT", Decimal("1.000000")),
+    ]
+    for from_uom, to_base_uom, dim, mult in uom_defs:
+        existing_uom = db.execute(
+            select(UnitConversion).where(
+                UnitConversion.from_uom == from_uom,
+                UnitConversion.to_base_uom == to_base_uom,
+            )
+        ).scalar_one_or_none()
+        if existing_uom is None:
+            db.add(
+                UnitConversion(
+                    from_uom=from_uom,
+                    to_base_uom=to_base_uom,
+                    unit_dimension=dim,
+                    multiplier=mult,
+                )
+            )
+            db.flush()
+
+    # 10. Official Raw Materials, Packaging Materials & Opening Balances (NIT Trichy Section 5)
+    material_defs = [
+        {
+            "code": "MAT-FLR",
+            "name": "Flour",
+            "category": "RAW_MATERIAL",
+            "dim": "MASS",
+            "base_uom": "g",
+            "display_uom": "kg",
+            "reorder_base": Decimal("50000.000"),
+            "opening_qty": Decimal("100"),
+            "opening_uom": "kg",
+            "opening_rate_paisa": 4200,
+        },
+        {
+            "code": "MAT-OIL",
+            "name": "Cooking oil",
+            "category": "RAW_MATERIAL",
+            "dim": "VOLUME",
+            "base_uom": "ml",
+            "display_uom": "L",
+            "reorder_base": Decimal("15000.000"),
+            "opening_qty": Decimal("30"),
+            "opening_uom": "L",
+            "opening_rate_paisa": 14000,
+        },
+        {
+            "code": "MAT-SPC",
+            "name": "Salt and spice mix",
+            "category": "RAW_MATERIAL",
+            "dim": "MASS",
+            "base_uom": "g",
+            "display_uom": "kg",
+            "reorder_base": Decimal("2000.000"),
+            "opening_qty": Decimal("5"),
+            "opening_uom": "kg",
+            "opening_rate_paisa": 20000,
+        },
+        {
+            "code": "MAT-PCH-200",
+            "name": "200 g pouch",
+            "category": "PACKAGING_MATERIAL",
+            "dim": "COUNT",
+            "base_uom": "piece",
+            "display_uom": "piece",
+            "reorder_base": Decimal("200.000"),
+            "opening_qty": Decimal("500"),
+            "opening_uom": "piece",
+            "opening_rate_paisa": 250,
+        },
+        {
+            "code": "MAT-CTN-20",
+            "name": "Carton (20 pkts)",
+            "category": "PACKAGING_MATERIAL",
+            "dim": "COUNT",
+            "base_uom": "piece",
+            "display_uom": "piece",
+            "reorder_base": Decimal("15.000"),
+            "opening_qty": Decimal("30"),
+            "opening_uom": "piece",
+            "opening_rate_paisa": 1500,
+        },
+    ]
+    materials_map: dict[str, Material] = {}
+    for mdef in material_defs:
+        mat = db.execute(select(Material).where(Material.code == mdef["code"])).scalar_one_or_none()
+        if mat is None:
+            mat = Material(
+                code=mdef["code"],
+                name=mdef["name"],
+                material_category=mdef["category"],
+                unit_dimension=mdef["dim"],
+                base_uom=mdef["base_uom"],
+                display_uom=mdef["display_uom"],
+                reorder_level_base=mdef["reorder_base"],
+                is_active=True,
+            )
+            db.add(mat)
+            db.flush()
+        materials_map[mdef["code"]] = mat
+
+        inventory_service.seed_opening_material(
+            db,
+            batch_ref="SEED-BENCHMARK-2026",
+            material=mat,
+            entered_qty=mdef["opening_qty"],
+            entered_uom=mdef["opening_uom"],
+            unit_rate_paisa_per_entered_uom=mdef["opening_rate_paisa"],
+            as_of_date=date(2026, 11, 1),
+            created_by=users_map["admin"].id,
+        )
+
+    # 11. Benchmark Supplier (Cauvery Agro Mills, Tamil Nadu)
+    supplier = db.execute(select(Supplier).where(Supplier.code == "SUP-001")).scalar_one_or_none()
+    if supplier is None:
+        supplier = Supplier(
+            code="SUP-001",
+            name="Cauvery Agro Mills",
+            contact_person="S. Sundaram",
+            phone="+919842212345",
+            email="dispatch@cauveryagro.example",
+            gstin="33AAACS7777P1Z1",
+            state_name="Tamil Nadu",
+            state_code="33",
+            address="No. 88, Gandhi Market Road, Tiruchirappalli, Tamil Nadu - 620008",
+            is_active=True,
+        )
+        db.add(supplier)
+        db.flush()
+
     db.commit()
     return {
         "salesman_a_id": users_map["salesman_a"].id,
         "salesman_b_id": users_map["salesman_b"].id,
         "admin_id": users_map["admin"].id,
+        "supervisor_id": users_map["supervisor"].id,
+        "auditor_id": users_map["auditor"].id,
+        "owner_id": users_map["owner"].id,
         "murukku_200g_pack_size_id": pack_200g.id,
+        "supplier_id": supplier.id,
+        "flour_material_id": materials_map["MAT-FLR"].id,
+        "oil_material_id": materials_map["MAT-OIL"].id,
+        "spice_material_id": materials_map["MAT-SPC"].id,
+        "pouch_material_id": materials_map["MAT-PCH-200"].id,
+        "carton_material_id": materials_map["MAT-CTN-20"].id,
     }
 
 
