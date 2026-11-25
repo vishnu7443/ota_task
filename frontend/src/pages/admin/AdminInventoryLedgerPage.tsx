@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { BookOpen } from "lucide-react";
 import { DesktopAdminLayout } from "@/components/layouts/DesktopAdminLayout";
 import { Badge } from "@/components/ui/badge";
@@ -180,7 +180,16 @@ export function AdminInventoryLedgerPage() {
                         {formatInrFromPaisa(entry.total_cost_paisa)}
                       </td>
                       <td className="py-3 pr-3 text-xs">
-                        <div className="font-mono font-semibold">{entry.reference_code ?? "—"}</div>
+                        {entry.production_run_id ? (
+                          <Link
+                            to={`/admin/production/runs/${entry.production_run_id}`}
+                            className="font-mono font-semibold text-primary hover:underline"
+                          >
+                            {entry.reference_code ?? `PRD-${entry.production_run_id}`}
+                          </Link>
+                        ) : (
+                          <div className="font-mono font-semibold">{entry.reference_code ?? "—"}</div>
+                        )}
                         <div className="text-[11px] text-muted-foreground">{entry.source_doc_type}</div>
                       </td>
                       <td className="py-3 text-xs">

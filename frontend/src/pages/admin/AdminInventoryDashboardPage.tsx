@@ -194,6 +194,7 @@ export function AdminInventoryDashboardPage() {
                   <th className="py-2 pr-3">Item</th>
                   <th className="py-2 pr-3 text-right">Opening</th>
                   <th className="py-2 pr-3 text-right">Received</th>
+                  <th className="py-2 pr-3 text-right">Issued</th>
                   <th className="py-2 pr-3 text-right">Adjusted</th>
                   <th className="py-2 pr-3 text-right">Physical</th>
                   <th className="py-2 pr-3 text-right">Reserved</th>
@@ -225,6 +226,9 @@ export function AdminInventoryDashboardPage() {
                       </td>
                       <td className="py-3 pr-3 text-right tabular-nums text-xs text-emerald-700 font-medium">
                         {formatDisplayQty(item.received_qty_base, item.display_uom, item.display_factor)}
+                      </td>
+                      <td className="py-3 pr-3 text-right tabular-nums text-xs text-amber-700 font-medium">
+                        {formatDisplayQty(item.issued_qty_base, item.display_uom, item.display_factor)}
                       </td>
                       <td className="py-3 pr-3 text-right tabular-nums text-xs">
                         {formatDisplayQty(item.adjusted_qty_base, item.display_uom, item.display_factor)}
@@ -270,7 +274,7 @@ export function AdminInventoryDashboardPage() {
                 })}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="py-8 text-center text-muted-foreground">
+                    <td colSpan={11} className="py-8 text-center text-muted-foreground">
                       No inventory items match the current filters.
                     </td>
                   </tr>

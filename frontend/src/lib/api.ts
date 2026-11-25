@@ -535,6 +535,320 @@ export interface InventoryLedgerEntry {
   opening_balance_id: number | null;
   purchase_receipt_item_id: number | null;
   stock_adjustment_id: number | null;
+  production_run_id: number | null;
+}
+
+export interface ProductSummary {
+  id: number;
+  product_code: string;
+  name: string;
+  category: string;
+  hsn_code: string;
+  gst_rate_bps: number;
+  is_active: boolean;
+}
+
+export interface PackSizeOption {
+  id: number;
+  product_id: number;
+  product_code: string;
+  product_name: string;
+  sku_code: string;
+  display_name: string;
+  pack_weight_g: number;
+  packets_per_carton: number;
+  base_selling_price_paisa: number;
+  is_active: boolean;
+  has_active_bom: boolean;
+  active_bom_version_no: number | null;
+}
+
+export interface RecipeTemplate {
+  id: number;
+  code: string;
+  name: string;
+  product_id: number | null;
+  base_yield_weight_g: string;
+  notes: string | null;
+  is_active: boolean;
+}
+
+export interface ProductionCatalog {
+  products: ProductSummary[];
+  pack_sizes: PackSizeOption[];
+  recipe_templates: RecipeTemplate[];
+}
+
+export interface BomComponent {
+  id: number;
+  material_id: number;
+  material_code: string;
+  material_name: string;
+  material_category: string;
+  unit_dimension: string;
+  input_role: string;
+  std_qty_base: string;
+  display_qty: string;
+  display_uom: string;
+  base_uom: string;
+  sort_order: number;
+}
+
+export interface BomVersion {
+  id: number;
+  bom_header_id: number;
+  version_no: number;
+  recipe_template_id: number | null;
+  recipe_template_name: string | null;
+  expected_yield_pkts: number;
+  batch_multiplier: string;
+  status: string;
+  effective_date: string | null;
+  notes: string | null;
+  created_by_name: string;
+  activated_by_name: string | null;
+  activated_at: string | null;
+  created_at: string;
+  run_count: number;
+  is_locked: boolean;
+  components: BomComponent[];
+}
+
+export interface BomHeader {
+  id: number;
+  pack_size_id: number;
+  sku_code: string;
+  display_name: string;
+  product_id: number;
+  product_name: string;
+  pack_weight_g: number;
+  packets_per_carton: number;
+  active_version_id: number | null;
+  active_version: BomVersion | null;
+  all_versions: BomVersion[];
+}
+
+export interface MaterialRequirement {
+  material_id: number;
+  material_code: string;
+  material_name: string;
+  material_category: string;
+  unit_dimension: string;
+  input_role: string;
+  bom_std_qty_base: string;
+  exact_scaled_qty_base: string;
+  standard_qty_base: string;
+  was_rounded_up: boolean;
+  rounding_note: string | null;
+  display_qty: string;
+  display_uom: string;
+  base_uom: string;
+  display_factor: string;
+  on_hand_qty_base: string;
+  reserved_qty_base: string;
+  available_qty_base: string;
+  additional_required_base: string;
+  is_shortage: boolean;
+}
+
+export interface BomCalculation {
+  pack_size_id: number;
+  sku_code: string;
+  display_name: string;
+  bom_version_id: number;
+  version_no: number;
+  batch_multiplier: string;
+  expected_output_pkts: number;
+  requirements: MaterialRequirement[];
+  has_shortages: boolean;
+  shortage_summary: string;
+}
+
+export interface ProductionMaterialIssue {
+  id: number;
+  material_id: number;
+  material_code: string;
+  material_name: string;
+  material_category: string;
+  issue_phase: string;
+  planned_qty_base: string;
+  issued_qty_base: string;
+  actual_consumed_qty_base: string;
+  actual_good_used_base: string;
+  damaged_qty_base: string;
+  returned_unused_qty_base: string;
+  wasted_qty_base: string;
+  cost_absorbed_paisa: number;
+  display_uom: string;
+  base_uom: string;
+  display_factor: string;
+  available_qty_base: string;
+  issued_by_name: string | null;
+  issued_at: string | null;
+}
+
+export interface ProductionOutput {
+  id: number;
+  good_qty_pkts: number;
+  rejected_qty_pkts: number;
+  total_qty_pkts: number;
+  batch_code: string;
+  expiry_date: string | null;
+  quality_remarks: string | null;
+  recorded_by_name: string;
+  recorded_at: string;
+}
+
+export interface ProductionWastage {
+  id: number;
+  material_id: number | null;
+  material_code: string | null;
+  material_name: string | null;
+  pack_size_id: number | null;
+  wastage_type: string;
+  qty_base: string;
+  uom: string;
+  cost_impact_paisa: number;
+  reason: string;
+  recorded_by_name: string;
+  recorded_at: string;
+}
+
+export interface ProductionVariance {
+  id: number;
+  variance_scope: string;
+  material_id: number | null;
+  material_code: string | null;
+  material_name: string | null;
+  planned_qty_base: string;
+  actual_qty_base: string;
+  variance_qty_base: string;
+  variance_pct: string | null;
+  tolerance_pct: string;
+  is_flagged: boolean;
+  formula_explanation: string;
+  display_uom: string;
+  base_uom: string;
+  display_factor: string;
+  computed_at: string;
+}
+
+export interface VarianceAlert {
+  id: number;
+  production_run_id: number;
+  run_number: string;
+  sku_code: string;
+  production_variance_id: number;
+  alert_type: string;
+  message: string;
+  status: string;
+  acknowledged_by_name: string | null;
+  acknowledged_at: string | null;
+  acknowledgement_note: string | null;
+  created_at: string;
+}
+
+export interface ProductionRunDetail {
+  id: number;
+  run_number: string;
+  pack_size_id: number;
+  sku_code: string;
+  display_name: string;
+  packets_per_carton: number;
+  bom_version_id: number;
+  version_no: number;
+  bom_status: string;
+  bom_expected_yield_pkts: number;
+  batch_multiplier: string;
+  expected_output_pkts: number;
+  actual_good_output_pkts: number;
+  rejected_output_pkts: number;
+  status: string;
+  run_date: string;
+  planned_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  posted_at: string | null;
+  cancelled_at: string | null;
+  supervisor_name: string;
+  posted_by_name: string | null;
+  quality_remarks: string | null;
+  notes: string | null;
+  total_material_cost_paisa: number;
+  material_issues: ProductionMaterialIssue[];
+  outputs: ProductionOutput[];
+  wastages: ProductionWastage[];
+  variances: ProductionVariance[];
+  alerts: VarianceAlert[];
+}
+
+export interface ProductionRunSummary {
+  id: number;
+  run_number: string;
+  pack_size_id: number;
+  sku_code: string;
+  display_name: string;
+  bom_version_id: number;
+  version_no: number;
+  batch_multiplier: string;
+  expected_output_pkts: number;
+  actual_good_output_pkts: number;
+  rejected_output_pkts: number;
+  status: string;
+  run_date: string;
+  supervisor_name: string;
+  has_flagged_variance: boolean;
+  open_alert_count: number;
+  damaged_packaging_qty: string;
+}
+
+export interface ShortageItem {
+  material_id: number;
+  material_code: string;
+  material_name: string;
+  display_uom: string;
+  base_uom: string;
+  display_factor: string;
+  required_qty_base: string;
+  available_qty_base: string;
+  shortage_qty_base: string;
+}
+
+export interface ProductionDashboardData {
+  total_runs: number;
+  draft_count: number;
+  planned_count: number;
+  in_progress_count: number;
+  completed_count: number;
+  posted_count: number;
+  cancelled_count: number;
+  total_expected_output_pkts: number;
+  total_good_output_pkts: number;
+  total_rejected_output_pkts: number;
+  total_damaged_packaging_units: string;
+  flagged_variance_count: number;
+  open_alerts_count: number;
+  upcoming_shortages: ShortageItem[];
+  open_alerts: VarianceAlert[];
+  runs: ProductionRunSummary[];
+}
+
+export interface ProductionVarianceReportRow {
+  run_id: number;
+  run_number: string;
+  run_date: string;
+  sku_code: string;
+  display_name: string;
+  bom_version_no: number;
+  batch_multiplier: string;
+  expected_output_pkts: number;
+  actual_good_output_pkts: number;
+  rejected_output_pkts: number;
+  yield_variance_pct: string | null;
+  oil_variance_pct: string | null;
+  damaged_packaging_qty: string;
+  status: string;
+  flagged_count: number;
 }
 
 export interface StockAdjustment {
@@ -860,6 +1174,7 @@ export const api = {
     itemCategory?: string;
     materialId?: number;
     packSizeId?: number;
+    productionRunId?: number;
     movementType?: string;
     dateFrom?: string;
     dateTo?: string;
@@ -869,6 +1184,7 @@ export const api = {
     if (opts?.itemCategory) params.set("item_category", opts.itemCategory);
     if (opts?.materialId) params.set("material_id", String(opts.materialId));
     if (opts?.packSizeId) params.set("pack_size_id", String(opts.packSizeId));
+    if (opts?.productionRunId) params.set("production_run_id", String(opts.productionRunId));
     if (opts?.movementType) params.set("movement_type", opts.movementType);
     if (opts?.dateFrom) params.set("date_from", opts.dateFrom);
     if (opts?.dateTo) params.set("date_to", opts.dateTo);
@@ -904,4 +1220,148 @@ export const api = {
     const qs = params.toString();
     return request<StockReportsSummary>(`/inventory/reports/summary${qs ? `?${qs}` : ""}`);
   },
+
+  // ── Phase 7: BOM & Production ──────────────────────────────────────────
+  getProductionCatalog: () => request<ProductionCatalog>("/production/catalog"),
+  createPackSize: (payload: {
+    product_id: number;
+    sku_code: string;
+    display_name: string;
+    pack_weight_g: number;
+    packets_per_carton: number;
+    base_selling_price_paisa?: number;
+  }) =>
+    request<PackSizeOption>("/production/catalog/pack-sizes", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  createMaterial: (payload: {
+    code: string;
+    name: string;
+    material_category: "RAW_MATERIAL" | "PACKAGING_MATERIAL";
+    unit_dimension: "MASS" | "VOLUME" | "COUNT";
+    display_uom: string;
+    reorder_level_display: string;
+  }) =>
+    request<MaterialSummary>("/production/catalog/materials", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getBoms: () => request<BomHeader[]>("/production/bom"),
+  getBom: (packSizeId: number) => request<BomHeader>(`/production/bom/${packSizeId}`),
+  createBomVersion: (payload: {
+    pack_size_id: number;
+    recipe_template_id?: number | null;
+    expected_yield_pkts: number;
+    effective_date?: string | null;
+    notes?: string | null;
+    activate?: boolean;
+    components: Array<{
+      material_id: number;
+      input_role: "COOKING_RAW" | "PACKAGING";
+      display_qty: string;
+      display_uom: string;
+    }>;
+  }) =>
+    request<BomVersion>("/production/bom/versions", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  activateBomVersion: (versionId: number) =>
+    request<BomVersion>(`/production/bom/versions/${versionId}/activate`, {
+      method: "POST",
+    }),
+  calculateBom: (payload: {
+    pack_size_id: number;
+    batch_multiplier?: string | null;
+    target_output_pkts?: number | null;
+    bom_version_id?: number | null;
+  }) => {
+    const params = new URLSearchParams();
+    if (payload.batch_multiplier) params.set("batch_multiplier", payload.batch_multiplier);
+    if (payload.target_output_pkts) params.set("target_output_pkts", String(payload.target_output_pkts));
+    if (payload.bom_version_id) params.set("bom_version_id", String(payload.bom_version_id));
+    const qs = params.toString();
+    return request<BomCalculation>(
+      `/production/bom/${payload.pack_size_id}/calculate${qs ? `?${qs}` : ""}`
+    );
+  },
+  getProductionDashboard: (opts?: { status?: string; packSizeId?: number }) => {
+    const params = new URLSearchParams();
+    if (opts?.status) params.set("status", opts.status);
+    if (opts?.packSizeId) params.set("pack_size_id", String(opts.packSizeId));
+    const qs = params.toString();
+    return request<ProductionDashboardData>(`/production/dashboard${qs ? `?${qs}` : ""}`);
+  },
+  getProductionRunDetail: (runId: number) =>
+    request<ProductionRunDetail>(`/production/runs/${runId}`),
+  createProductionRun: (payload: {
+    pack_size_id: number;
+    batch_multiplier?: string | null;
+    target_output_pkts?: number | null;
+    run_date?: string | null;
+    notes?: string | null;
+    plan_immediately?: boolean;
+  }) =>
+    request<ProductionRunDetail>("/production/runs", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  planProductionRun: (runId: number) =>
+    request<ProductionRunDetail>(`/production/runs/${runId}/plan`, { method: "POST" }),
+  issueProductionMaterials: (
+    runId: number,
+    payload: {
+      items: Array<{ material_id: number; issued_qty: string; issued_uom: string }>;
+      require_all_bom_stock?: boolean;
+      notes?: string | null;
+    }
+  ) =>
+    request<ProductionRunDetail>(`/production/runs/${runId}/issue-materials`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  completeProductionRun: (
+    runId: number,
+    payload: {
+      good_output_pkts: number;
+      rejected_output_pkts: number;
+      batch_code: string;
+      expiry_date?: string | null;
+      quality_remarks?: string | null;
+      consumptions: Array<{
+        material_id: number;
+        actual_consumed_qty?: string | null;
+        actual_good_used_qty?: string | null;
+        damaged_packaging_qty?: string;
+        returned_unused_qty?: string;
+        wasted_qty?: string;
+        uom: string;
+      }>;
+    }
+  ) =>
+    request<ProductionRunDetail>(`/production/runs/${runId}/complete`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  postProductionRun: (runId: number) =>
+    request<ProductionRunDetail>(`/production/runs/${runId}/post`, { method: "POST" }),
+  cancelProductionRun: (
+    runId: number,
+    payload: {
+      reason: string;
+      returned_items?: Array<{ material_id: number; returned_qty: string; uom: string }>;
+    }
+  ) =>
+    request<ProductionRunDetail>(`/production/runs/${runId}/cancel`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  acknowledgeVarianceAlert: (alertId: number, note?: string | null) =>
+    request<VarianceAlert>(`/production/alerts/${alertId}/acknowledge`, {
+      method: "POST",
+      body: JSON.stringify({ note: note || null }),
+    }),
+  getProductionVarianceReport: () =>
+    request<ProductionVarianceReportRow[]>("/production/reports/variances"),
 };

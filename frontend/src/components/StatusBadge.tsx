@@ -2,6 +2,13 @@ import { Badge } from "@/components/ui/badge";
 
 const STATUS_VARIANTS: Record<string, { label: string; variant: "default" | "secondary" | "warning" | "destructive" | "success" | "outline" }> = {
   DRAFT: { label: "Draft", variant: "secondary" },
+  PLANNED: { label: "Planned", variant: "default" },
+  IN_PROGRESS: { label: "In Progress", variant: "warning" },
+  COMPLETED: { label: "Completed", variant: "default" },
+  ACTIVE: { label: "Active", variant: "success" },
+  SUPERSEDED: { label: "Superseded", variant: "outline" },
+  OPEN: { label: "Open Alert", variant: "warning" },
+  ACKNOWLEDGED: { label: "Acknowledged", variant: "secondary" },
   SUBMITTED: { label: "Submitted", variant: "default" },
   PENDING_APPROVAL: { label: "Pending Approval", variant: "warning" },
   UNDER_REVIEW: { label: "Under Review", variant: "warning" },

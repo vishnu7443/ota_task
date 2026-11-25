@@ -1,6 +1,7 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
+  Activity,
   AlertTriangle,
   BarChart3,
   BookOpen,
@@ -9,6 +10,7 @@ import {
   Factory,
   FileSpreadsheet,
   FileText,
+  Layers,
   LayoutDashboard,
   LogOut,
   PackageCheck,
@@ -137,15 +139,26 @@ export function DesktopAdminLayout({
               </nav>
             </div>
 
+            <div>
+              <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Production &amp; BOM
+              </p>
+              <nav className="space-y-1">
+                <SidebarLink to="/admin/production" end icon={Activity} label="Production Runs" />
+                <SidebarLink to="/admin/production/boms" icon={Layers} label="BOM & Recipes" />
+                <SidebarLink
+                  to="/admin/production/variances"
+                  icon={BarChart3}
+                  label="Variance Report"
+                />
+              </nav>
+            </div>
+
             <div className="border-t pt-4">
               <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Upcoming Phases
               </p>
               <div className="mt-2 space-y-1 opacity-55">
-                <div className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground">
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  <span>BOM &amp; Production Runs</span>
-                </div>
                 <div className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground">
                   <FileSpreadsheet className="h-3.5 w-3.5" />
                   <span>GST Invoicing &amp; AR</span>

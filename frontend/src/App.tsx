@@ -3,11 +3,15 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { LoginPage } from "@/pages/LoginPage";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
+import { AdminBomPage } from "@/pages/admin/AdminBomPage";
 import { AdminGoodsReceiptsPage } from "@/pages/admin/AdminGoodsReceiptsPage";
 import { AdminIncomingOrdersPage } from "@/pages/admin/AdminIncomingOrdersPage";
 import { AdminInventoryDashboardPage } from "@/pages/admin/AdminInventoryDashboardPage";
 import { AdminInventoryLedgerPage } from "@/pages/admin/AdminInventoryLedgerPage";
 import { AdminOrderDetailPage } from "@/pages/admin/AdminOrderDetailPage";
+import { AdminProductionDashboardPage } from "@/pages/admin/AdminProductionDashboardPage";
+import { AdminProductionRunDetailPage } from "@/pages/admin/AdminProductionRunDetailPage";
+import { AdminProductionVarianceReportPage } from "@/pages/admin/AdminProductionVarianceReportPage";
 import { AdminPurchaseOrdersPage } from "@/pages/admin/AdminPurchaseOrdersPage";
 import { AdminStockAdjustmentsPage } from "@/pages/admin/AdminStockAdjustmentsPage";
 import { AdminStockReportsPage } from "@/pages/admin/AdminStockReportsPage";
@@ -188,6 +192,40 @@ export function App() {
         element={
           <RequireRole allowedRoles={["FACTORY_ADMIN", "PRODUCTION_SUPERVISOR", "OWNER", "ACCOUNTANT_AUDITOR"]}>
             <AdminStockReportsPage />
+          </RequireRole>
+        }
+      />
+
+      {/* Phase 7: BOM & Production Management Routes */}
+      <Route
+        path="/admin/production"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "PRODUCTION_SUPERVISOR", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminProductionDashboardPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/production/boms"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "PRODUCTION_SUPERVISOR", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminBomPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/production/runs/:runId"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "PRODUCTION_SUPERVISOR", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminProductionRunDetailPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/production/variances"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "PRODUCTION_SUPERVISOR", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminProductionVarianceReportPage />
           </RequireRole>
         }
       />
