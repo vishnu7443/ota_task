@@ -276,6 +276,330 @@ export interface AdminReasonPayload {
   expected_version?: number;
 }
 
+// --- Phase 6: Purchasing & Inventory Interfaces ---
+
+export interface Supplier {
+  id: number;
+  code: string;
+  name: string;
+  contact_person: string | null;
+  phone: string | null;
+  email: string | null;
+  gstin: string | null;
+  state_name: string;
+  state_code: string;
+  address: string;
+  is_active: boolean;
+  po_count: number;
+  receipt_count: number;
+  total_purchased_paisa: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupplierCreatePayload {
+  code: string;
+  name: string;
+  contact_person?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  gstin?: string | null;
+  state_name: string;
+  state_code: string;
+  address: string;
+  is_active?: boolean;
+}
+
+export interface SupplierUpdatePayload {
+  name: string;
+  contact_person?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  gstin?: string | null;
+  state_name: string;
+  state_code: string;
+  address: string;
+  is_active: boolean;
+}
+
+export interface PurchaseOrderItem {
+  id: number;
+  material_id: number;
+  material_code: string;
+  material_name: string;
+  material_category: string;
+  base_uom: string;
+  display_uom: string;
+  entered_qty: string;
+  entered_uom: string;
+  ordered_qty_base: string;
+  received_qty_base: string;
+  rejected_qty_base: string;
+  remaining_qty_base: string;
+  unit_rate_paisa: number;
+  gst_rate_bps: number;
+  line_subtotal_paisa: number;
+  line_tax_paisa: number;
+  line_total_paisa: number;
+}
+
+export interface PurchaseOrderSummary {
+  id: number;
+  po_number: string;
+  supplier_id: number;
+  supplier_code: string;
+  supplier_name: string;
+  order_date: string;
+  expected_date: string | null;
+  status: string;
+  subtotal_paisa: number;
+  tax_paisa: number;
+  total_paisa: number;
+  notes: string | null;
+  rejection_reason: string | null;
+  created_by_name: string;
+  approved_by_name: string | null;
+  approved_at: string | null;
+  created_at: string;
+  item_count: number;
+}
+
+export interface GoodsReceiptItem {
+  id: number;
+  purchase_order_item_id: number | null;
+  material_id: number;
+  material_code: string;
+  material_name: string;
+  base_uom: string;
+  display_uom: string;
+  entered_uom: string;
+  received_qty_entered: string;
+  rejected_qty_entered: string;
+  accepted_qty_entered: string;
+  received_qty_base: string;
+  rejected_qty_base: string;
+  accepted_qty_base: string;
+  entered_unit_rate_paisa: number;
+  gst_rate_bps: number;
+  unit_cost_paisa_per_base: string;
+  line_subtotal_paisa: number;
+  line_tax_paisa: number;
+  line_total_paisa: number;
+  batch_code: string | null;
+  expiry_date: string | null;
+  rejection_reason: string | null;
+}
+
+export interface GoodsReceiptSummary {
+  id: number;
+  receipt_number: string;
+  client_receipt_id: string;
+  purchase_order_id: number | null;
+  po_number: string | null;
+  supplier_id: number;
+  supplier_code: string;
+  supplier_name: string;
+  supplier_bill_ref: string | null;
+  receipt_date: string;
+  status: string;
+  subtotal_paisa: number;
+  input_gst_paisa: number;
+  total_paisa: number;
+  discrepancy_notes: string | null;
+  is_duplicate_replay: boolean;
+  received_by_name: string;
+  verified_by_name: string | null;
+  posted_by_name: string | null;
+  posted_at: string | null;
+  created_at: string;
+}
+
+export interface GoodsReceiptDetail extends GoodsReceiptSummary {
+  items: GoodsReceiptItem[];
+}
+
+export interface PurchaseOrderDetail extends PurchaseOrderSummary {
+  items: PurchaseOrderItem[];
+  receipts: GoodsReceiptSummary[];
+}
+
+export interface SupplierDetail extends Supplier {
+  purchase_orders: PurchaseOrderSummary[];
+  purchase_receipts: GoodsReceiptSummary[];
+}
+
+export interface PurchaseOrderCreatePayload {
+  supplier_id: number;
+  order_date?: string | null;
+  expected_date?: string | null;
+  notes?: string | null;
+  submit_immediately?: boolean;
+  items: Array<{
+    material_id: number;
+    entered_qty: string | number;
+    entered_uom: string;
+    unit_rate_paisa: number;
+    gst_rate_bps: number;
+  }>;
+}
+
+export interface GoodsReceiptCreatePayload {
+  client_receipt_id: string;
+  purchase_order_id?: number | null;
+  supplier_id?: number | null;
+  supplier_bill_ref?: string | null;
+  receipt_date?: string | null;
+  discrepancy_notes?: string | null;
+  submit_immediately?: boolean;
+  items: Array<{
+    purchase_order_item_id?: number | null;
+    material_id: number;
+    entered_uom: string;
+    received_qty_entered: string | number;
+    rejected_qty_entered?: string | number;
+    unit_rate_paisa?: number | null;
+    gst_rate_bps?: number | null;
+    batch_code?: string | null;
+    expiry_date?: string | null;
+    rejection_reason?: string | null;
+    allow_excess?: boolean;
+  }>;
+}
+
+export interface MaterialSummary {
+  id: number;
+  code: string;
+  name: string;
+  material_category: string;
+  unit_dimension: string;
+  base_uom: string;
+  display_uom: string;
+  reorder_level_base: string;
+  is_active: boolean;
+}
+
+export interface InventoryBalanceSummary {
+  item_type: "MATERIAL" | "PACK_SIZE";
+  item_id: number;
+  item_category: "RAW_MATERIAL" | "PACKAGING_MATERIAL" | "FINISHED_GOOD";
+  code: string;
+  name: string;
+  unit_dimension: string;
+  base_uom: string;
+  display_uom: string;
+  display_factor: string;
+  reorder_level_base: string;
+  opening_qty_base: string;
+  received_qty_base: string;
+  issued_qty_base: string;
+  dispatched_qty_base: string;
+  adjusted_qty_base: string;
+  physical_qty_base: string;
+  reserved_qty_base: string;
+  available_qty_base: string;
+  is_low_stock: boolean;
+  open_lot_value_paisa: number;
+}
+
+export interface InventoryDashboardData {
+  total_items: number;
+  raw_material_count: number;
+  packaging_material_count: number;
+  finished_good_count: number;
+  low_stock_count: number;
+  pending_adjustments_count: number;
+  total_stock_value_paisa: number;
+  items: InventoryBalanceSummary[];
+}
+
+export interface InventoryLedgerEntry {
+  id: number;
+  occurred_at: string;
+  item_category: string;
+  item_type: string;
+  item_id: number;
+  item_code: string;
+  item_name: string;
+  base_uom: string;
+  display_uom: string;
+  movement_type: string;
+  entered_qty: string | null;
+  entered_uom: string | null;
+  signed_qty_base: string;
+  unit_cost_paisa_per_base: string;
+  total_cost_paisa: number;
+  source_doc_type: string;
+  reference_code: string | null;
+  notes: string | null;
+  actor_name: string;
+  opening_balance_id: number | null;
+  purchase_receipt_item_id: number | null;
+  stock_adjustment_id: number | null;
+}
+
+export interface StockAdjustment {
+  id: number;
+  adjustment_number: string;
+  item_category: string;
+  item_type: string;
+  item_id: number;
+  item_code: string;
+  item_name: string;
+  base_uom: string;
+  display_uom: string;
+  adjustment_type: string;
+  entered_qty: string;
+  entered_uom: string;
+  delta_qty_base: string;
+  unit_cost_paisa_per_base: string;
+  reason: string;
+  status: string;
+  requested_by_name: string;
+  approved_by_name: string | null;
+  rejection_reason: string | null;
+  requested_at: string;
+  posted_at: string | null;
+}
+
+export interface StockAdjustmentCreatePayload {
+  item_type: "MATERIAL" | "PACK_SIZE";
+  item_id: number;
+  adjustment_type: "DAMAGED" | "EXPIRED" | "MISSING" | "COUNT_CORRECTION" | "SUPPLIER_RETURN" | "OTHER";
+  entered_qty: string | number;
+  entered_uom: string;
+  unit_cost_paisa_per_base?: number | null;
+  reason: string;
+  post_immediately?: boolean;
+}
+
+export interface PurchaseReceiptReportRow {
+  receipt_id: number;
+  receipt_number: string;
+  receipt_date: string;
+  po_number: string | null;
+  supplier_code: string;
+  supplier_name: string;
+  material_code: string;
+  material_name: string;
+  entered_uom: string;
+  received_qty_entered: string;
+  rejected_qty_entered: string;
+  accepted_qty_entered: string;
+  accepted_qty_base: string;
+  base_uom: string;
+  entered_unit_rate_paisa: number;
+  line_total_paisa: number;
+  batch_code: string | null;
+  status: string;
+}
+
+export interface StockReportsSummary {
+  current_stock: InventoryBalanceSummary[];
+  low_stock_items: InventoryBalanceSummary[];
+  purchase_receipts: PurchaseReceiptReportRow[];
+  adjustments: StockAdjustment[];
+}
+
 const API_BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) || "http://localhost:8000/api/v1";
 
@@ -428,4 +752,156 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  // --- Phase 6: Suppliers, Purchase Orders, Goods Receipts ---
+  getSuppliers: (opts?: { activeOnly?: boolean; search?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.activeOnly) params.set("active_only", "true");
+    if (opts?.search) params.set("search", opts.search);
+    const qs = params.toString();
+    return request<Supplier[]>(`/purchasing/suppliers${qs ? `?${qs}` : ""}`);
+  },
+  getSupplierDetail: (supplierId: number) =>
+    request<SupplierDetail>(`/purchasing/suppliers/${supplierId}`),
+  createSupplier: (payload: SupplierCreatePayload) =>
+    request<Supplier>("/purchasing/suppliers", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateSupplier: (supplierId: number, payload: SupplierUpdatePayload) =>
+    request<Supplier>(`/purchasing/suppliers/${supplierId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  getPurchaseOrders: (opts?: { supplierId?: number; status?: string; search?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.supplierId) params.set("supplier_id", String(opts.supplierId));
+    if (opts?.status) params.set("status", opts.status);
+    if (opts?.search) params.set("search", opts.search);
+    const qs = params.toString();
+    return request<PurchaseOrderSummary[]>(`/purchasing/orders${qs ? `?${qs}` : ""}`);
+  },
+  getPurchaseOrderDetail: (poId: number) =>
+    request<PurchaseOrderDetail>(`/purchasing/orders/${poId}`),
+  createPurchaseOrder: (payload: PurchaseOrderCreatePayload) =>
+    request<PurchaseOrderDetail>("/purchasing/orders", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  submitPurchaseOrder: (poId: number) =>
+    request<PurchaseOrderDetail>(`/purchasing/orders/${poId}/submit`, { method: "POST" }),
+  approvePurchaseOrder: (poId: number) =>
+    request<PurchaseOrderDetail>(`/purchasing/orders/${poId}/approve`, { method: "POST" }),
+  rejectPurchaseOrder: (poId: number, reason: string) =>
+    request<PurchaseOrderDetail>(`/purchasing/orders/${poId}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+  cancelPurchaseOrder: (poId: number, reason: string) =>
+    request<PurchaseOrderDetail>(`/purchasing/orders/${poId}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+
+  getGoodsReceipts: (opts?: {
+    supplierId?: number;
+    purchaseOrderId?: number;
+    status?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    search?: string;
+  }) => {
+    const params = new URLSearchParams();
+    if (opts?.supplierId) params.set("supplier_id", String(opts.supplierId));
+    if (opts?.purchaseOrderId) params.set("purchase_order_id", String(opts.purchaseOrderId));
+    if (opts?.status) params.set("status", opts.status);
+    if (opts?.dateFrom) params.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) params.set("date_to", opts.dateTo);
+    if (opts?.search) params.set("search", opts.search);
+    const qs = params.toString();
+    return request<GoodsReceiptSummary[]>(`/purchasing/receipts${qs ? `?${qs}` : ""}`);
+  },
+  getGoodsReceiptDetail: (receiptId: number) =>
+    request<GoodsReceiptDetail>(`/purchasing/receipts/${receiptId}`),
+  createGoodsReceipt: (payload: GoodsReceiptCreatePayload) =>
+    request<GoodsReceiptDetail>("/purchasing/receipts", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  submitGoodsReceipt: (receiptId: number) =>
+    request<GoodsReceiptDetail>(`/purchasing/receipts/${receiptId}/submit`, { method: "POST" }),
+  verifyGoodsReceipt: (receiptId: number) =>
+    request<GoodsReceiptDetail>(`/purchasing/receipts/${receiptId}/verify`, { method: "POST" }),
+  postGoodsReceipt: (receiptId: number) =>
+    request<GoodsReceiptDetail>(`/purchasing/receipts/${receiptId}/post`, { method: "POST" }),
+
+  // --- Phase 6: Inventory, Ledger, Adjustments & Stock Reports ---
+  getMaterials: (opts?: { category?: string; search?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.category) params.set("category", opts.category);
+    if (opts?.search) params.set("search", opts.search);
+    const qs = params.toString();
+    return request<MaterialSummary[]>(`/inventory/materials${qs ? `?${qs}` : ""}`);
+  },
+  getInventoryOverview: (opts?: {
+    itemCategory?: string;
+    lowStockOnly?: boolean;
+    search?: string;
+  }) => {
+    const params = new URLSearchParams();
+    if (opts?.itemCategory) params.set("item_category", opts.itemCategory);
+    if (opts?.lowStockOnly) params.set("low_stock_only", "true");
+    if (opts?.search) params.set("search", opts.search);
+    const qs = params.toString();
+    return request<InventoryDashboardData>(`/inventory/overview${qs ? `?${qs}` : ""}`);
+  },
+  getInventoryLedger: (opts?: {
+    itemCategory?: string;
+    materialId?: number;
+    packSizeId?: number;
+    movementType?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    limit?: number;
+  }) => {
+    const params = new URLSearchParams();
+    if (opts?.itemCategory) params.set("item_category", opts.itemCategory);
+    if (opts?.materialId) params.set("material_id", String(opts.materialId));
+    if (opts?.packSizeId) params.set("pack_size_id", String(opts.packSizeId));
+    if (opts?.movementType) params.set("movement_type", opts.movementType);
+    if (opts?.dateFrom) params.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) params.set("date_to", opts.dateTo);
+    if (opts?.limit) params.set("limit", String(opts.limit));
+    const qs = params.toString();
+    return request<InventoryLedgerEntry[]>(`/inventory/ledger${qs ? `?${qs}` : ""}`);
+  },
+  getStockAdjustments: (opts?: { status?: string; itemCategory?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.status) params.set("status", opts.status);
+    if (opts?.itemCategory) params.set("item_category", opts.itemCategory);
+    const qs = params.toString();
+    return request<StockAdjustment[]>(`/inventory/adjustments${qs ? `?${qs}` : ""}`);
+  },
+  createStockAdjustment: (payload: StockAdjustmentCreatePayload) =>
+    request<StockAdjustment>("/inventory/adjustments", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  approveStockAdjustment: (adjustmentId: number) =>
+    request<StockAdjustment>(`/inventory/adjustments/${adjustmentId}/approve`, {
+      method: "POST",
+    }),
+  rejectStockAdjustment: (adjustmentId: number, reason: string) =>
+    request<StockAdjustment>(`/inventory/adjustments/${adjustmentId}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+  getStockReportsSummary: (opts?: { dateFrom?: string; dateTo?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.dateFrom) params.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) params.set("date_to", opts.dateTo);
+    const qs = params.toString();
+    return request<StockReportsSummary>(`/inventory/reports/summary${qs ? `?${qs}` : ""}`);
+  },
 };

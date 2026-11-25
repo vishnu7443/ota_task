@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 
 function routeForRole(roleCode: string): string {
   if (roleCode === "SALESMAN") return "/salesman";
+  if (roleCode === "PRODUCTION_SUPERVISOR") return "/admin/inventory";
   return "/admin";
 }
 
@@ -147,6 +148,20 @@ export function LoginPage() {
                     <div>
                       <div className="font-semibold">Factory Admin</div>
                       <div className="text-[10px] text-muted-foreground">admin</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUsername("supervisor");
+                      setPassword("Prod@2026!");
+                    }}
+                    className="flex items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-left text-xs hover:bg-secondary col-span-2"
+                  >
+                    <Factory className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                    <div>
+                      <div className="font-semibold">Production Supervisor</div>
+                      <div className="text-[10px] text-muted-foreground">supervisor (Purchasing &amp; Inventory)</div>
                     </div>
                   </button>
                 </div>

@@ -1,16 +1,53 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
+  AlertTriangle,
   BarChart3,
+  BookOpen,
+  Boxes,
   ClipboardCheck,
   Factory,
   FileSpreadsheet,
+  FileText,
   LayoutDashboard,
   LogOut,
-  Package,
+  PackageCheck,
+  Receipt,
+  Truck,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+
+function SidebarLink({
+  to,
+  end = false,
+  icon: Icon,
+  label,
+}: {
+  to: string;
+  end?: boolean;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        cn(
+          "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+          isActive
+            ? "bg-primary/10 text-primary"
+            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+        )
+      }
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      <span>{label}</span>
+    </NavLink>
+  );
+}
 
 export function DesktopAdminLayout({
   title,
@@ -26,6 +63,11 @@ export function DesktopAdminLayout({
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const canViewSalesOrders =
+    user?.role_code === "FACTORY_ADMIN" ||
+    user?.role_code === "OWNER" ||
+    user?.role_code === "ACCOUNTANT_AUDITOR";
+
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -35,8 +77,8 @@ export function DesktopAdminLayout({
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       <aside className="w-full border-b bg-card md:w-64 md:shrink-0 md:border-b-0 md:border-r">
         <div className="flex h-full flex-col justify-between p-4">
-          <div>
-            <div className="flex items-center gap-2.5 px-2 pb-5 pt-1 border-b">
+          <div className="space-y-5">
+            <div className="flex items-center gap-2.5 px-2 pb-4 pt-1 border-b">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Factory className="h-5 w-5" />
               </div>
@@ -48,54 +90,69 @@ export function DesktopAdminLayout({
               </div>
             </div>
 
-            <nav className="mt-5 space-y-1">
-              <NavLink
-                to="/admin"
-                end
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  )
-                }
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                <span>Dashboard</span>
-              </NavLink>
-              <NavLink
-                to="/admin/orders"
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  )
-                }
-              >
-                <ClipboardCheck className="h-4 w-4" />
-                <span>Incoming Orders</span>
-              </NavLink>
-            </nav>
+            {canViewSalesOrders && (
+              <div>
+                <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Sales &amp; Oversight
+                </p>
+                <nav className="space-y-1">
+                  <SidebarLink to="/admin" end icon={LayoutDashboard} label="Dashboard" />
+                  <SidebarLink to="/admin/orders" icon={ClipboardCheck} label="Incoming Orders" />
+                </nav>
+              </div>
+            )}
 
-            <div className="mt-8 border-t pt-4">
+            <div>
+              <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Purchasing
+              </p>
+              <nav className="space-y-1">
+                <SidebarLink to="/admin/purchasing/suppliers" icon={Users} label="Suppliers" />
+                <SidebarLink to="/admin/purchasing/orders" icon={Receipt} label="Purchase Orders" />
+                <SidebarLink
+                  to="/admin/purchasing/receipts"
+                  icon={PackageCheck}
+                  label="Goods Receipts"
+                />
+              </nav>
+            </div>
+
+            <div>
+              <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Inventory &amp; Ledger
+              </p>
+              <nav className="space-y-1">
+                <SidebarLink to="/admin/inventory" end icon={Boxes} label="Stock Overview" />
+                <SidebarLink
+                  to="/admin/inventory/ledger"
+                  icon={BookOpen}
+                  label="Inventory Ledger"
+                />
+                <SidebarLink
+                  to="/admin/inventory/adjustments"
+                  icon={AlertTriangle}
+                  label="Stock Adjustments"
+                />
+                <SidebarLink to="/admin/inventory/reports" icon={FileText} label="Stock Reports" />
+              </nav>
+            </div>
+
+            <div className="border-t pt-4">
               <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Upcoming Phases
               </p>
               <div className="mt-2 space-y-1 opacity-55">
-                <div className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground">
-                  <FileSpreadsheet className="h-4 w-4" />
+                <div className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  <span>BOM &amp; Production Runs</span>
+                </div>
+                <div className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
                   <span>GST Invoicing &amp; AR</span>
                 </div>
-                <div className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground">
-                  <Package className="h-4 w-4" />
-                  <span>BOM &amp; Stock Ledger</span>
-                </div>
-                <div className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground">
-                  <BarChart3 className="h-4 w-4" />
-                  <span>Audit Exports</span>
+                <div className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                  <Truck className="h-3.5 w-3.5" />
+                  <span>Dispatch &amp; Collections</span>
                 </div>
               </div>
             </div>
@@ -119,16 +176,14 @@ export function DesktopAdminLayout({
       </aside>
 
       <div className="flex-1 min-w-0">
-        <header className="border-b bg-card/80 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-foreground">{title}</h1>
-              {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
-            </div>
-            {actions && <div className="flex items-center gap-2.5">{actions}</div>}
+        <header className="border-b bg-card px-6 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">{title}</h1>
+            {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
           </div>
+          {actions && <div className="flex items-center gap-2">{actions}</div>}
         </header>
-        <main className="mx-auto max-w-6xl p-6">{children}</main>
+        <main className="p-6 max-w-7xl mx-auto">{children}</main>
       </div>
     </div>
   );
