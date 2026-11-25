@@ -63,6 +63,10 @@ class InventoryLedgerEntryResponse(BaseModel):
     purchase_receipt_item_id: int | None = None
     stock_adjustment_id: int | None = None
     production_run_id: int | None = None
+    dispatch_item_id: int | None = None
+    credit_note_item_id: int | None = None
+    dispatch_id: int | None = None
+    invoice_id: int | None = None
 
 
 class StockAdjustmentCreateRequest(BaseModel):

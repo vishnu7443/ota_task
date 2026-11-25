@@ -35,6 +35,7 @@ from app.modules.orders.schemas import (
     OrderApprovalRecord,
     OrderAuditEntry,
     OrderDetailResponse,
+    OrderDispatchTrackingItem,
     OrderItemDetail,
     OrderReasonRequest,
     OrderSummaryResponse,
@@ -171,6 +172,7 @@ def _hydrate_order_summary(
     users_map: dict[int, User],
     pack_sizes_map: dict[int, PackSize],
     factory_state_code: str,
+    inv_summary: dict[str, Any] | None = None,
 ) -> OrderSummaryResponse:
     customer = customers_map[order.customer_id]
     salesman = users_map[order.salesman_id]
@@ -210,6 +212,10 @@ def _hydrate_order_summary(
         submitted_at=order.submitted_at,
         approved_at=order.approved_at,
         created_at=order.created_at,
+        invoice_id=inv_summary["invoice_id"] if inv_summary else None,
+        invoice_number=inv_summary["invoice_number"] if inv_summary else None,
+        invoice_doc_status=inv_summary["invoice_doc_status"] if inv_summary else None,
+        invoice_dispatch_status=inv_summary["invoice_dispatch_status"] if inv_summary else None,
     )
 
 
@@ -358,6 +364,10 @@ def _build_order_detail(
         for log in audit_logs
     ]
 
+    from app.modules.billing.service import get_order_billing_dispatch_snapshot
+
+    billing_snap = get_order_billing_dispatch_snapshot(db, order.id)
+
     return OrderDetailResponse(
         id=order.id,
         order_number=order.order_number,
@@ -395,12 +405,18 @@ def _build_order_detail(
         estimated_grand_total_paisa=tax_estimate.grand_total_paisa,
         submitted_at=order.submitted_at,
         created_at=order.created_at,
+        invoice_id=billing_snap["invoice_id"],
+        invoice_number=billing_snap["invoice_number"],
+        invoice_doc_status=billing_snap["invoice_doc_status"],
+        invoice_grand_total_paisa=billing_snap["invoice_grand_total_paisa"],
+        invoice_dispatch_status=billing_snap["invoice_dispatch_status"],
         tax_estimate=tax_estimate,
         items=item_details,
         status_history=history,
         approvals=approvals,
         reservations=reservation_records,
         audit_trail=audit_entries,
+        dispatches=[OrderDispatchTrackingItem(**d) for d in billing_snap["dispatches"]],
     )
 
 
@@ -1256,6 +1272,15 @@ def cancel_order(
         assert_transition_allowed(
             order.status, OrderStatus.CANCELLED, order_number=order.order_number
         )
+        if order.status in {
+            OrderStatus.INVOICED,
+            OrderStatus.PARTIALLY_DISPATCHED,
+            OrderStatus.DISPATCHED,
+        }:
+            raise ConflictError(
+                f"Order {order.order_number} is already {order.status} and cannot be cancelled directly; issue a Credit Note on the GST Invoice instead.",
+                error_code="INVALID_STATE_TRANSITION",
+            )
 
         stock_snapshot, ordered_total, available_total, shortage_total = (
             _snapshot_from_order_items(db, order)
@@ -1472,6 +1497,24 @@ def list_paginated_orders(
     }
     pack_sizes_map = sales_repo.get_pack_sizes_by_ids(db, list(sku_ids), include_inactive=True)
 
+    from app.modules.billing.models import Invoice
+
+    inv_rows = (
+        db.execute(
+            select(Invoice).where(Invoice.sales_order_id.in_([o.id for o in orders]))
+        )
+        .scalars()
+        .all()
+    )
+    inv_by_order: dict[int, dict[str, Any]] = {}
+    for inv in inv_rows:
+        inv_by_order[inv.sales_order_id] = {
+            "invoice_id": inv.id,
+            "invoice_number": inv.invoice_number,
+            "invoice_doc_status": inv.doc_status,
+            "invoice_dispatch_status": inv.dispatch_status,
+        }
+
     items = [
         _hydrate_order_summary(
             o,
@@ -1479,6 +1522,7 @@ def list_paginated_orders(
             users_map=users_map,
             pack_sizes_map=pack_sizes_map,
             factory_state_code=factory_state,
+            inv_summary=inv_by_order.get(o.id),
         )
         for o in orders
     ]

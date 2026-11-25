@@ -182,6 +182,20 @@ class TaxEstimateBreakdown(BaseModel):
     grand_total_paisa: int
 
 
+class OrderDispatchTrackingItem(BaseModel):
+    id: int
+    dispatch_number: str
+    status: str
+    dispatch_date: str
+    delivery_date: str | None = None
+    vehicle_number: str | None = None
+    transporter_name: str | None = None
+    total_dispatched_pkts: int
+    total_received_pkts: int
+    delivery_remarks: str | None = None
+    delivery_exception_reason: str | None = None
+
+
 class OrderSummaryResponse(BaseModel):
     id: int
     order_number: str
@@ -207,6 +221,10 @@ class OrderSummaryResponse(BaseModel):
     submitted_at: datetime | None = None
     approved_at: datetime | None = None
     created_at: datetime
+    invoice_id: int | None = None
+    invoice_number: str | None = None
+    invoice_doc_status: str | None = None
+    invoice_dispatch_status: str | None = None
 
 
 class OrderDetailResponse(OrderSummaryResponse):
@@ -222,12 +240,14 @@ class OrderDetailResponse(OrderSummaryResponse):
     cancelled_by_name: str | None = None
     cancelled_at: datetime | None = None
     is_duplicate_replay: bool = False
+    invoice_grand_total_paisa: int | None = None
     tax_estimate: TaxEstimateBreakdown
     items: list[OrderItemDetail]
     status_history: list[StatusHistoryEntry]
     approvals: list[OrderApprovalRecord]
     reservations: list[StockReservationRecord] = []
     audit_trail: list[OrderAuditEntry] = []
+    dispatches: list[OrderDispatchTrackingItem] = []
 
 
 class PaginatedOrdersResponse(BaseModel):

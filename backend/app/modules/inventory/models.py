@@ -338,7 +338,8 @@ class InventoryMovement(Base):
             "(source_doc_type = 'PURCHASE_RECEIPT' AND purchase_receipt_item_id IS NOT NULL) OR "
             "(source_doc_type IN ('STOCK_ADJUSTMENT', 'SUPPLIER_RETURN') AND stock_adjustment_id IS NOT NULL) OR "
             "(source_doc_type = 'PRODUCTION_RUN' AND production_run_id IS NOT NULL) OR "
-            "source_doc_type IN ('DISPATCH', 'CREDIT_NOTE')",
+            "(source_doc_type = 'DISPATCH' AND dispatch_item_id IS NOT NULL) OR "
+            "(source_doc_type = 'CREDIT_NOTE' AND credit_note_item_id IS NOT NULL)",
             name="mov_source_required",
         ),
         CheckConstraint(
@@ -399,6 +400,16 @@ class InventoryMovement(Base):
         ForeignKey("production.production_runs.id", ondelete="RESTRICT"),
         nullable=True,
     )
+    dispatch_item_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("billing.dispatch_items.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    credit_note_item_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("billing.credit_note_items.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -413,6 +424,10 @@ class StockReservation(Base):
     __tablename__ = "stock_reservations"
     __table_args__ = (
         CheckConstraint("reserved_qty_pkts > 0", name="qty_positive"),
+        CheckConstraint(
+            "fulfilled_qty_pkts >= 0 AND fulfilled_qty_pkts <= reserved_qty_pkts",
+            name="fulfilled_bounds",
+        ),
         CheckConstraint("status IN ('ACTIVE', 'RELEASED', 'FULFILLED')", name="status_enum"),
         Index(
             "uq_stock_res_active_item",
@@ -440,6 +455,7 @@ class StockReservation(Base):
         BigInteger, ForeignKey("sales.pack_sizes.id", ondelete="RESTRICT"), nullable=False
     )
     reserved_qty_pkts: Mapped[int] = mapped_column(Integer, nullable=False)
+    fulfilled_qty_pkts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     reserved_by: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("iam.users.id", ondelete="RESTRICT"), nullable=False

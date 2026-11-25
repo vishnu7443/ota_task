@@ -562,6 +562,30 @@ def list_ledger_entries(
         u.id: u for u in db.execute(select(User).where(User.id.in_(user_ids))).scalars().all()
     }
 
+    dispatch_item_ids = {r.dispatch_item_id for r in rows if r.dispatch_item_id is not None}
+    dispatch_link_map: dict[int, tuple[int, int]] = {}
+    if dispatch_item_ids:
+        from app.modules.billing.models import Dispatch, DispatchItem
+
+        d_rows = db.execute(
+            select(DispatchItem.id, Dispatch.id, Dispatch.invoice_id)
+            .join(Dispatch, Dispatch.id == DispatchItem.dispatch_id)
+            .where(DispatchItem.id.in_(dispatch_item_ids))
+        ).all()
+        dispatch_link_map = {row[0]: (int(row[1]), int(row[2])) for row in d_rows}
+
+    cn_item_ids = {r.credit_note_item_id for r in rows if r.credit_note_item_id is not None}
+    cn_invoice_map: dict[int, int] = {}
+    if cn_item_ids:
+        from app.modules.billing.models import CreditNote, CreditNoteItem
+
+        c_rows = db.execute(
+            select(CreditNoteItem.id, CreditNote.original_invoice_id)
+            .join(CreditNote, CreditNote.id == CreditNoteItem.credit_note_id)
+            .where(CreditNoteItem.id.in_(cn_item_ids))
+        ).all()
+        cn_invoice_map = {row[0]: int(row[1]) for row in c_rows}
+
     result: list[InventoryLedgerEntryResponse] = []
     for mov in rows:
         if mov.material_id is not None:
@@ -607,6 +631,18 @@ def list_ledger_entries(
                 purchase_receipt_item_id=mov.purchase_receipt_item_id,
                 stock_adjustment_id=mov.stock_adjustment_id,
                 production_run_id=mov.production_run_id,
+                dispatch_item_id=mov.dispatch_item_id,
+                credit_note_item_id=mov.credit_note_item_id,
+                dispatch_id=(
+                    dispatch_link_map[mov.dispatch_item_id][0]
+                    if mov.dispatch_item_id in dispatch_link_map
+                    else None
+                ),
+                invoice_id=(
+                    dispatch_link_map[mov.dispatch_item_id][1]
+                    if mov.dispatch_item_id in dispatch_link_map
+                    else cn_invoice_map.get(mov.credit_note_item_id)
+                ),
             )
         )
     return result

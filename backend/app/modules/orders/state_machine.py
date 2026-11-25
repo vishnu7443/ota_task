@@ -37,13 +37,20 @@ ALLOWED_TRANSITIONS: dict[str, set[str]] = {
         OrderStatus.CANCELLED,
     },
     OrderStatus.APPROVED: {
-        # Billing / dispatch belong to Phase 6; in Phase 5 only pre-invoice cancellation is permitted.
+        OrderStatus.INVOICED,
         OrderStatus.CANCELLED,
     },
     OrderStatus.REJECTED: set(),
     OrderStatus.CANCELLED: set(),
-    OrderStatus.INVOICED: set(),
-    OrderStatus.PARTIALLY_DISPATCHED: set(),
+    OrderStatus.INVOICED: {
+        OrderStatus.PARTIALLY_DISPATCHED,
+        OrderStatus.DISPATCHED,
+        OrderStatus.CANCELLED,
+    },
+    OrderStatus.PARTIALLY_DISPATCHED: {
+        OrderStatus.PARTIALLY_DISPATCHED,
+        OrderStatus.DISPATCHED,
+    },
     OrderStatus.DISPATCHED: set(),
 }
 

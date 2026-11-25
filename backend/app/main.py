@@ -11,6 +11,8 @@ from app.core.config import get_settings
 from app.core.database import check_db_health, get_db
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
+from app.modules.audit import models as _audit_models  # noqa: F401
+from app.modules.billing.router import router as billing_router
 from app.modules.iam.router import router as auth_router
 from app.modules.inventory.router import router as inventory_router
 from app.modules.orders.router import admin_orders_router, salesman_orders_router
@@ -79,6 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(purchasing_router, prefix=settings.API_V1_PREFIX)
     app.include_router(inventory_router, prefix=settings.API_V1_PREFIX)
     app.include_router(production_router, prefix=settings.API_V1_PREFIX)
+    app.include_router(billing_router, prefix=settings.API_V1_PREFIX)
 
     return app
 
