@@ -851,7 +851,13 @@ export function AdminOrderDetailPage() {
                   )}
 
                   {order.status === "APPROVED" && (
-                    <div className="pt-1">
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Button asChild>
+                        <Link to="/admin/billing">
+                          <CheckCircle2 className="h-4 w-4" />
+                          Proceed to GST Billing Desk
+                        </Link>
+                      </Button>
                       <Button
                         type="button"
                         variant="destructive"
@@ -861,6 +867,35 @@ export function AdminOrderDetailPage() {
                         <Ban className="h-4 w-4" />
                         Cancel Approved Order &amp; Release Reservation
                       </Button>
+                    </div>
+                  )}
+                  {order.invoice_id && (
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs space-y-1.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <span className="font-semibold">GST Invoice: </span>
+                          <Link
+                            to={`/admin/billing/invoices/${order.invoice_id}`}
+                            className="font-mono font-bold text-primary hover:underline"
+                          >
+                            {order.invoice_number ?? `Draft Invoice #${order.invoice_id}`}
+                          </Link>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <StatusBadge status={order.invoice_doc_status ?? "DRAFT"} />
+                          {order.invoice_dispatch_status && <StatusBadge status={order.invoice_dispatch_status} />}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to={`/admin/billing/invoices/${order.invoice_id}`}>Open Invoice &amp; PDF</Link>
+                        </Button>
+                        {order.invoice_doc_status === "ISSUED" && order.invoice_dispatch_status !== "DISPATCHED" && (
+                          <Button size="sm" asChild>
+                            <Link to={`/admin/dispatch?invoice_id=${order.invoice_id}`}>Dispatch Order</Link>
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </CardContent>

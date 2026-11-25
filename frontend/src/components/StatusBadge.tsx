@@ -24,6 +24,21 @@ const STATUS_VARIANTS: Record<string, { label: string; variant: "default" | "sec
   PARTIALLY_DISPATCHED: { label: "Partial Dispatch", variant: "warning" },
   DISPATCHED: { label: "Dispatched", variant: "success" },
   CANCELLED: { label: "Cancelled", variant: "destructive" },
+  ISSUED: { label: "Issued", variant: "success" },
+  CANCELLED_BY_CN: { label: "Cancelled by CN", variant: "destructive" },
+  UNPAID: { label: "Unpaid", variant: "warning" },
+  PARTIALLY_PAID: { label: "Partially Paid", variant: "default" },
+  PAID: { label: "Paid", variant: "success" },
+  CREDITED: { label: "Credited", variant: "outline" },
+  PENDING: { label: "Pending", variant: "secondary" },
+  PARTIAL: { label: "Partial", variant: "warning" },
+  CREATED: { label: "Created", variant: "secondary" },
+  READY_FOR_DISPATCH: { label: "Ready for Dispatch", variant: "default" },
+  IN_TRANSIT: { label: "In Transit", variant: "warning" },
+  DELIVERED: { label: "Delivered", variant: "success" },
+  DELIVERY_EXCEPTION: { label: "Delivery Exception", variant: "destructive" },
+  INTRA_STATE: { label: "Intra-State (CGST+SGST)", variant: "secondary" },
+  INTER_STATE: { label: "Inter-State (IGST)", variant: "default" },
 };
 
 export function StatusBadge({ status }: { status: string }) {

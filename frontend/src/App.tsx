@@ -4,10 +4,16 @@ import { useAuth } from "@/lib/auth-context";
 import { LoginPage } from "@/pages/LoginPage";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { AdminBomPage } from "@/pages/admin/AdminBomPage";
+import { AdminBillingDashboardPage } from "@/pages/admin/AdminBillingDashboardPage";
+import { AdminBillingReportsPage } from "@/pages/admin/AdminBillingReportsPage";
+import { AdminCreditNotesPage } from "@/pages/admin/AdminCreditNotesPage";
+import { AdminDispatchDashboardPage } from "@/pages/admin/AdminDispatchDashboardPage";
+import { AdminDispatchDetailPage } from "@/pages/admin/AdminDispatchDetailPage";
 import { AdminGoodsReceiptsPage } from "@/pages/admin/AdminGoodsReceiptsPage";
 import { AdminIncomingOrdersPage } from "@/pages/admin/AdminIncomingOrdersPage";
 import { AdminInventoryDashboardPage } from "@/pages/admin/AdminInventoryDashboardPage";
 import { AdminInventoryLedgerPage } from "@/pages/admin/AdminInventoryLedgerPage";
+import { AdminInvoiceDetailPage } from "@/pages/admin/AdminInvoiceDetailPage";
 import { AdminOrderDetailPage } from "@/pages/admin/AdminOrderDetailPage";
 import { AdminProductionDashboardPage } from "@/pages/admin/AdminProductionDashboardPage";
 import { AdminProductionRunDetailPage } from "@/pages/admin/AdminProductionRunDetailPage";
@@ -226,6 +232,56 @@ export function App() {
         element={
           <RequireRole allowedRoles={["FACTORY_ADMIN", "PRODUCTION_SUPERVISOR", "OWNER", "ACCOUNTANT_AUDITOR"]}>
             <AdminProductionVarianceReportPage />
+          </RequireRole>
+        }
+      />
+
+      {/* Phase 8: GST Billing, Credit Notes, Dispatch & Delivery Routes */}
+      <Route
+        path="/admin/billing"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminBillingDashboardPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/billing/invoices/:invoiceId"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminInvoiceDetailPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/billing/credit-notes"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminCreditNotesPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/billing/reports"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminBillingReportsPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/dispatch"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminDispatchDashboardPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/dispatch/:dispatchId"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminDispatchDetailPage />
           </RequireRole>
         }
       />

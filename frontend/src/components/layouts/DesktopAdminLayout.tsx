@@ -93,15 +93,29 @@ export function DesktopAdminLayout({
             </div>
 
             {canViewSalesOrders && (
-              <div>
-                <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Sales &amp; Oversight
-                </p>
-                <nav className="space-y-1">
-                  <SidebarLink to="/admin" end icon={LayoutDashboard} label="Dashboard" />
-                  <SidebarLink to="/admin/orders" icon={ClipboardCheck} label="Incoming Orders" />
-                </nav>
-              </div>
+              <>
+                <div>
+                  <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Sales &amp; Oversight
+                  </p>
+                  <nav className="space-y-1">
+                    <SidebarLink to="/admin" end icon={LayoutDashboard} label="Dashboard" />
+                    <SidebarLink to="/admin/orders" icon={ClipboardCheck} label="Incoming Orders" />
+                  </nav>
+                </div>
+
+                <div>
+                  <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    GST Billing &amp; Dispatch
+                  </p>
+                  <nav className="space-y-1">
+                    <SidebarLink to="/admin/billing" end icon={Receipt} label="Billing & Invoices" />
+                    <SidebarLink to="/admin/billing/credit-notes" icon={FileSpreadsheet} label="Credit Notes" />
+                    <SidebarLink to="/admin/dispatch" icon={Truck} label="Dispatch & Delivery" />
+                    <SidebarLink to="/admin/billing/reports" icon={BarChart3} label="GST & Sales Reports" />
+                  </nav>
+                </div>
+              </>
             )}
 
             <div>
@@ -161,11 +175,11 @@ export function DesktopAdminLayout({
               <div className="mt-2 space-y-1 opacity-55">
                 <div className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground">
                   <FileSpreadsheet className="h-3.5 w-3.5" />
-                  <span>GST Invoicing &amp; AR</span>
+                  <span>Payments &amp; AR Collections</span>
                 </div>
                 <div className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground">
-                  <Truck className="h-3.5 w-3.5" />
-                  <span>Dispatch &amp; Collections</span>
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  <span>Step 8 Final Costing</span>
                 </div>
               </div>
             </div>

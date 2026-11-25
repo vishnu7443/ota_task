@@ -17,6 +17,8 @@ const STATUS_CHIPS = [
   { value: "UNDER_REVIEW", label: "Under Review" },
   { value: "CORRECTION_REQUESTED", label: "Correction" },
   { value: "APPROVED", label: "Approved" },
+  { value: "INVOICED", label: "Invoiced" },
+  { value: "DISPATCHED", label: "Dispatched" },
   { value: "REJECTED", label: "Rejected" },
   { value: "CANCELLED", label: "Cancelled" },
 ];
@@ -123,6 +125,7 @@ export function SalesmanOrdersPage() {
                           <div className="font-semibold text-sm truncate">{ord.customer_name}</div>
                           <div className="text-xs text-muted-foreground">
                             {formatDateTimeIst(ord.submitted_at)}
+                            {ord.invoice_number ? ` · ${ord.invoice_number}` : ""}
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 text-right shrink-0">

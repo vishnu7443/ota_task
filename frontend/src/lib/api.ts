@@ -108,6 +108,10 @@ export interface OrderSummary {
   submitted_at?: string | null;
   approved_at?: string | null;
   created_at: string;
+  invoice_id?: number | null;
+  invoice_number?: string | null;
+  invoice_doc_status?: string | null;
+  invoice_dispatch_status?: string | null;
 }
 
 export interface OrderItemDetail {
@@ -192,6 +196,20 @@ export interface OrderAuditEntry {
   occurred_at: string;
 }
 
+export interface OrderDispatchTrackingItem {
+  id: number;
+  dispatch_number: string;
+  status: string;
+  dispatch_date: string;
+  delivery_date?: string | null;
+  vehicle_number?: string | null;
+  transporter_name?: string | null;
+  total_dispatched_pkts: number;
+  total_received_pkts: number;
+  delivery_remarks?: string | null;
+  delivery_exception_reason?: string | null;
+}
+
 export interface OrderDetail extends OrderSummary {
   version: number;
   customer_gstin?: string | null;
@@ -205,12 +223,14 @@ export interface OrderDetail extends OrderSummary {
   cancelled_by_name?: string | null;
   cancelled_at?: string | null;
   is_duplicate_replay: boolean;
+  invoice_grand_total_paisa?: number | null;
   tax_estimate: TaxEstimateBreakdown;
   items: OrderItemDetail[];
   status_history: StatusHistoryEntry[];
   approvals: OrderApprovalRecord[];
   reservations: StockReservationRecord[];
   audit_trail: OrderAuditEntry[];
+  dispatches?: OrderDispatchTrackingItem[];
 }
 
 export interface PaginatedOrders {
@@ -536,6 +556,10 @@ export interface InventoryLedgerEntry {
   purchase_receipt_item_id: number | null;
   stock_adjustment_id: number | null;
   production_run_id: number | null;
+  dispatch_item_id: number | null;
+  credit_note_item_id: number | null;
+  dispatch_id: number | null;
+  invoice_id: number | null;
 }
 
 export interface ProductSummary {
@@ -1364,4 +1388,530 @@ export const api = {
     }),
   getProductionVarianceReport: () =>
     request<ProductionVarianceReportRow[]>("/production/reports/variances"),
+
+  // ── Phase 8: GST Billing, Credit Notes, Dispatch & Delivery ───────────────
+  getBillingDashboard: (opts?: { docStatus?: string; dispatchStatus?: string; search?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.docStatus) params.set("doc_status", opts.docStatus);
+    if (opts?.dispatchStatus) params.set("dispatch_status", opts.dispatchStatus);
+    if (opts?.search) params.set("search", opts.search);
+    const qs = params.toString();
+    return request<BillingDashboardData>(`/billing/dashboard${qs ? `?${qs}` : ""}`);
+  },
+  getInvoices: (opts?: { docStatus?: string; dispatchStatus?: string; search?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.docStatus) params.set("doc_status", opts.docStatus);
+    if (opts?.dispatchStatus) params.set("dispatch_status", opts.dispatchStatus);
+    if (opts?.search) params.set("search", opts.search);
+    const qs = params.toString();
+    return request<InvoiceSummary[]>(`/billing/invoices${qs ? `?${qs}` : ""}`);
+  },
+  createInvoice: (payload: {
+    sales_order_id: number;
+    invoice_date?: string | null;
+    apply_round_off?: boolean;
+    notes?: string | null;
+    item_discounts?: Array<{ sales_order_item_id: number; discount_paisa: number }>;
+    issue_immediately?: boolean;
+  }) =>
+    request<InvoiceDetail>("/billing/invoices", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getInvoiceDetail: (invoiceId: number) => request<InvoiceDetail>(`/billing/invoices/${invoiceId}`),
+  verifyInvoice: (invoiceId: number, payload: { remarks?: string | null; expected_version?: number }) =>
+    request<InvoiceDetail>(`/billing/invoices/${invoiceId}/verify`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  issueInvoice: (
+    invoiceId: number,
+    payload: { verification_remarks?: string | null; expected_version?: number }
+  ) =>
+    request<InvoiceDetail>(`/billing/invoices/${invoiceId}/issue`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  fetchInvoicePdfBlob: async (invoiceId: number): Promise<Blob> => {
+    const token = getStoredToken();
+    const res = await fetch(`${API_BASE}/billing/invoices/${invoiceId}/pdf`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      throw new ApiClientError(res.status, "PDF_ERROR", "Unable to download invoice PDF.");
+    }
+    return res.blob();
+  },
+  getCreditNotes: () => request<CreditNote[]>("/billing/credit-notes"),
+  createCreditNote: (payload: {
+    original_invoice_id: number;
+    note_type: "INVOICE_CANCELLATION" | "SALES_RETURN" | "VALUE_ADJUSTMENT";
+    issue_date?: string | null;
+    reason: string;
+    cancel_original_invoice?: boolean;
+    issue_immediately?: boolean;
+    items?: Array<{
+      invoice_item_id: number;
+      qty_pkts: number;
+      taxable_override_paisa?: number | null;
+      return_disposition: "NONE_NOT_DISPATCHED" | "RESTOCK_SELLABLE" | "SCRAP_DAMAGED";
+    }>;
+  }) =>
+    request<CreditNote>("/billing/credit-notes", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  issueCreditNote: (cnId: number) =>
+    request<CreditNote>(`/billing/credit-notes/${cnId}/issue`, { method: "POST" }),
+  getDispatchDashboard: (status?: string) => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    const qs = params.toString();
+    return request<DispatchDashboardData>(`/billing/dispatches/dashboard${qs ? `?${qs}` : ""}`);
+  },
+  getDispatchDetail: (dispatchId: number) => request<DispatchDetail>(`/billing/dispatches/${dispatchId}`),
+  createDispatch: (payload: {
+    invoice_id: number;
+    dispatch_date?: string | null;
+    transporter_name?: string | null;
+    vehicle_number?: string | null;
+    lr_number?: string | null;
+    packing_verified?: boolean;
+    packing_remarks?: string | null;
+    notes?: string | null;
+    post_immediately?: boolean;
+    items: Array<{ invoice_item_id: number; dispatched_qty_pkts: number; batch_code_ref?: string | null }>;
+  }) =>
+    request<DispatchDetail>("/billing/dispatches", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  markDispatchReady: (
+    dispatchId: number,
+    payload: {
+      remarks?: string | null;
+      transporter_name?: string | null;
+      vehicle_number?: string | null;
+      lr_number?: string | null;
+      expected_version?: number;
+    }
+  ) =>
+    request<DispatchDetail>(`/billing/dispatches/${dispatchId}/ready`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  postDispatch: (
+    dispatchId: number,
+    payload: {
+      remarks?: string | null;
+      transporter_name?: string | null;
+      vehicle_number?: string | null;
+      lr_number?: string | null;
+      expected_version?: number;
+    }
+  ) =>
+    request<DispatchDetail>(`/billing/dispatches/${dispatchId}/post`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateDeliveryStatus: (
+    dispatchId: number,
+    payload: {
+      target_status: "IN_TRANSIT" | "DELIVERED" | "DELIVERY_EXCEPTION";
+      delivery_date?: string | null;
+      remarks?: string | null;
+      exception_reason?: string | null;
+      expected_version?: number;
+      items?: Array<{ dispatch_item_id: number; received_qty_pkts: number; discrepancy_remarks?: string | null }>;
+    }
+  ) =>
+    request<DispatchDetail>(`/billing/dispatches/${dispatchId}/delivery`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getBillingReports: (opts?: { dateFrom?: string; dateTo?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.dateFrom) params.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) params.set("date_to", opts.dateTo);
+    const qs = params.toString();
+    return request<BillingReportsBundle>(`/billing/reports${qs ? `?${qs}` : ""}`);
+  },
 };
+
+// ── Phase 8 TypeScript Types ────────────────────────────────────────────────
+
+export interface ReadyForBillingOrder {
+  sales_order_id: number;
+  order_number: string;
+  order_date: string;
+  customer_id: number;
+  customer_name: string;
+  customer_gstin: string | null;
+  place_of_supply_state_code: string;
+  place_of_supply_state_name: string;
+  supply_type: "INTRA_STATE" | "INTER_STATE";
+  total_packets: number;
+  taxable_total_paisa: number;
+  estimated_tax_paisa: number;
+  estimated_grand_total_paisa: number;
+  approved_at: string | null;
+}
+
+export interface InvoiceItem {
+  id: number;
+  sales_order_item_id: number;
+  pack_size_id: number;
+  sku_code: string;
+  product_name: string;
+  description: string;
+  hsn_code: string;
+  qty_pkts: number;
+  uom: string;
+  unit_price_paisa: number;
+  discount_paisa: number;
+  taxable_paisa: number;
+  gst_rate_bps: number;
+  cgst_rate_bps: number;
+  sgst_rate_bps: number;
+  igst_rate_bps: number;
+  cgst_paisa: number;
+  sgst_paisa: number;
+  igst_paisa: number;
+  line_total_paisa: number;
+  dispatched_qty_pkts: number;
+  remaining_dispatch_qty_pkts: number;
+}
+
+export interface InvoiceTaxComponent {
+  id: number;
+  hsn_code: string;
+  tax_type: "CGST" | "SGST" | "IGST";
+  rate_bps: number;
+  taxable_base_paisa: number;
+  tax_amount_paisa: number;
+}
+
+export interface InvoiceSummary {
+  id: number;
+  draft_ref: string;
+  invoice_number: string | null;
+  financial_year: string;
+  sales_order_id: number;
+  order_number: string;
+  customer_id: number;
+  customer_name: string;
+  buyer_gstin: string | null;
+  place_of_supply_state_code: string;
+  place_of_supply_state_name: string;
+  nature_of_supply: "B2B" | "B2C";
+  supply_type: "INTRA_STATE" | "INTER_STATE";
+  invoice_date: string;
+  due_date: string;
+  doc_status: string;
+  payment_status: string;
+  dispatch_status: string;
+  taxable_total_paisa: number;
+  cgst_total_paisa: number;
+  sgst_total_paisa: number;
+  igst_total_paisa: number;
+  round_off_paisa: number;
+  grand_total_paisa: number;
+  credited_paisa: number;
+  paid_paisa: number;
+  outstanding_paisa: number;
+  total_qty_pkts: number;
+  dispatched_qty_pkts: number;
+  remaining_dispatch_qty_pkts: number;
+  issued_at: string | null;
+  created_at: string;
+}
+
+export interface CreditNoteItem {
+  id: number;
+  invoice_item_id: number;
+  pack_size_id: number;
+  sku_code: string;
+  description: string;
+  qty_pkts: number;
+  return_disposition: string;
+  taxable_reversed_paisa: number;
+  cgst_reversed_paisa: number;
+  sgst_reversed_paisa: number;
+  igst_reversed_paisa: number;
+  line_total_reversed_paisa: number;
+}
+
+export interface CreditNote {
+  id: number;
+  draft_ref: string;
+  cn_number: string | null;
+  financial_year: string;
+  original_invoice_id: number;
+  original_invoice_number: string | null;
+  customer_id: number;
+  customer_name: string;
+  supply_type: string;
+  note_type: string;
+  issue_date: string;
+  reason: string;
+  status: string;
+  cancel_original_invoice: boolean;
+  taxable_reversed_paisa: number;
+  cgst_reversed_paisa: number;
+  sgst_reversed_paisa: number;
+  igst_reversed_paisa: number;
+  round_off_reversed_paisa: number;
+  total_reversed_paisa: number;
+  created_by_name: string;
+  approved_by_name: string | null;
+  issued_by_name: string | null;
+  issued_at: string | null;
+  created_at: string;
+  items: CreditNoteItem[];
+}
+
+export interface DispatchItem {
+  id: number;
+  invoice_item_id: number;
+  pack_size_id: number;
+  sku_code: string;
+  display_name: string;
+  dispatched_qty_pkts: number;
+  batch_code_ref: string | null;
+  received_qty_pkts: number | null;
+  discrepancy_qty_pkts: number;
+  discrepancy_remarks: string | null;
+}
+
+export interface DispatchStatusHistoryEntry {
+  id: number;
+  from_status: string | null;
+  to_status: string;
+  changed_by_name: string;
+  reason: string | null;
+  changed_at: string;
+}
+
+export interface DispatchDetail {
+  id: number;
+  dispatch_number: string;
+  invoice_id: number;
+  invoice_number: string | null;
+  sales_order_id: number;
+  order_number: string;
+  customer_id: number;
+  customer_name: string;
+  status: string;
+  dispatch_date: string;
+  transporter_name: string | null;
+  vehicle_number: string | null;
+  lr_number: string | null;
+  packing_verified: boolean;
+  packing_remarks: string | null;
+  notes: string | null;
+  created_by_name: string;
+  created_at: string;
+  ready_by_name: string | null;
+  ready_at: string | null;
+  dispatched_by_name: string | null;
+  dispatched_at: string | null;
+  in_transit_at: string | null;
+  delivery_date: string | null;
+  delivery_confirmed_by_name: string | null;
+  delivery_confirmed_at: string | null;
+  delivery_remarks: string | null;
+  delivery_exception_reason: string | null;
+  version: number;
+  total_dispatched_pkts: number;
+  total_received_pkts: number;
+  items: DispatchItem[];
+  status_history: DispatchStatusHistoryEntry[];
+}
+
+export interface InvoiceAuditEntry {
+  id: number;
+  actor_name: string;
+  actor_role: string;
+  action: string;
+  entity_table: string;
+  reason: string | null;
+  after_state: Record<string, unknown> | null;
+  occurred_at: string;
+}
+
+export interface InvoiceDetail extends InvoiceSummary {
+  seller_legal_name: string;
+  seller_gstin: string;
+  seller_state_name: string;
+  seller_state_code: string;
+  seller_address: string;
+  customer_type: string;
+  billing_address_snapshot: string;
+  shipping_address_snapshot: string;
+  payment_terms: string;
+  discount_total_paisa: number;
+  amount_in_words: string;
+  notes: string | null;
+  legal_declaration: string;
+  tax_calculation_snapshot: Record<string, unknown>;
+  created_by_name: string;
+  verified_by_name: string | null;
+  verified_at: string | null;
+  verification_remarks: string | null;
+  issued_by_name: string | null;
+  version: number;
+  items: InvoiceItem[];
+  tax_components: InvoiceTaxComponent[];
+  credit_notes: CreditNote[];
+  dispatches: DispatchDetail[];
+  audit_trail: InvoiceAuditEntry[];
+}
+
+export interface ReadyForDispatchInvoice {
+  invoice_id: number;
+  invoice_number: string;
+  sales_order_id: number;
+  order_number: string;
+  customer_id: number;
+  customer_name: string;
+  place_of_supply_state_code: string;
+  invoice_date: string;
+  dispatch_status: string;
+  total_qty_pkts: number;
+  dispatched_qty_pkts: number;
+  remaining_qty_pkts: number;
+  fg_on_hand_sufficient: boolean;
+}
+
+export interface BillingDashboardData {
+  ready_for_billing_count: number;
+  draft_invoices_count: number;
+  issued_invoices_count: number;
+  cancelled_invoices_count: number;
+  total_taxable_paisa: number;
+  total_cgst_paisa: number;
+  total_sgst_paisa: number;
+  total_igst_paisa: number;
+  total_invoiced_paisa: number;
+  total_credited_paisa: number;
+  total_outstanding_paisa: number;
+  ready_orders: ReadyForBillingOrder[];
+  invoices: InvoiceSummary[];
+}
+
+export interface DispatchDashboardData {
+  ready_for_dispatch_invoices_count: number;
+  created_count: number;
+  ready_count: number;
+  dispatched_count: number;
+  in_transit_count: number;
+  delivered_count: number;
+  exception_count: number;
+  ready_invoices: ReadyForDispatchInvoice[];
+  dispatches: DispatchDetail[];
+}
+
+export interface SalesInvoiceRegisterRow {
+  invoice_id: number;
+  invoice_number: string;
+  invoice_date: string;
+  financial_year: string;
+  order_number: string;
+  customer_name: string;
+  buyer_gstin: string | null;
+  place_of_supply_state_code: string;
+  nature_of_supply: string;
+  supply_type: string;
+  doc_status: string;
+  dispatch_status: string;
+  payment_status: string;
+  taxable_total_paisa: number;
+  cgst_total_paisa: number;
+  sgst_total_paisa: number;
+  igst_total_paisa: number;
+  round_off_paisa: number;
+  grand_total_paisa: number;
+  credited_paisa: number;
+  outstanding_paisa: number;
+}
+
+export interface GstHsnReportRow {
+  hsn_code: string;
+  supply_type: string;
+  tax_rate_bps: number;
+  taxable_value_paisa: number;
+  cgst_paisa: number;
+  sgst_paisa: number;
+  igst_paisa: number;
+  total_tax_paisa: number;
+}
+
+export interface GstSummaryReport {
+  gross_taxable_paisa: number;
+  gross_cgst_paisa: number;
+  gross_sgst_paisa: number;
+  gross_igst_paisa: number;
+  credited_taxable_paisa: number;
+  credited_cgst_paisa: number;
+  credited_sgst_paisa: number;
+  credited_igst_paisa: number;
+  net_taxable_paisa: number;
+  net_cgst_paisa: number;
+  net_sgst_paisa: number;
+  net_igst_paisa: number;
+  disclaimer: string;
+  hsn_rows: GstHsnReportRow[];
+}
+
+export interface CustomerSalesSummaryRow {
+  customer_id: number;
+  customer_name: string;
+  customer_type: string;
+  buyer_gstin: string | null;
+  state_code: string;
+  invoice_count: number;
+  total_qty_pkts: number;
+  taxable_paisa: number;
+  gst_paisa: number;
+  grand_total_paisa: number;
+  credited_paisa: number;
+  outstanding_paisa: number;
+}
+
+export interface ProductSalesSummaryRow {
+  pack_size_id: number;
+  sku_code: string;
+  description: string;
+  hsn_code: string;
+  total_qty_pkts: number;
+  taxable_paisa: number;
+  cgst_paisa: number;
+  sgst_paisa: number;
+  igst_paisa: number;
+  line_total_paisa: number;
+}
+
+export interface DispatchRegisterRow {
+  dispatch_id: number;
+  dispatch_number: string;
+  dispatch_date: string;
+  invoice_number: string;
+  order_number: string;
+  customer_name: string;
+  status: string;
+  transporter_name: string | null;
+  vehicle_number: string | null;
+  total_dispatched_pkts: number;
+  total_received_pkts: number;
+  delivery_date: string | null;
+}
+
+export interface BillingReportsBundle {
+  sales_register: SalesInvoiceRegisterRow[];
+  gst_summary: GstSummaryReport;
+  credit_notes: CreditNote[];
+  dispatch_register: DispatchRegisterRow[];
+  customer_sales: CustomerSalesSummaryRow[];
+  product_sales: ProductSalesSummaryRow[];
+  outstanding_invoices: SalesInvoiceRegisterRow[];
+}

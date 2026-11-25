@@ -20,6 +20,7 @@ const MOVEMENT_TYPES = [
   "PROD_ISSUE_OUT",
   "PROD_OUTPUT_IN",
   "DISPATCH_OUT",
+  "CREDIT_RETURN_IN",
 ];
 
 export function AdminInventoryLedgerPage() {
@@ -186,6 +187,20 @@ export function AdminInventoryLedgerPage() {
                             className="font-mono font-semibold text-primary hover:underline"
                           >
                             {entry.reference_code ?? `PRD-${entry.production_run_id}`}
+                          </Link>
+                        ) : entry.dispatch_id ? (
+                          <Link
+                            to={`/admin/dispatch/${entry.dispatch_id}`}
+                            className="font-mono font-semibold text-primary hover:underline"
+                          >
+                            {entry.reference_code ?? `DSP-${entry.dispatch_id}`}
+                          </Link>
+                        ) : entry.invoice_id ? (
+                          <Link
+                            to={`/admin/billing/invoices/${entry.invoice_id}`}
+                            className="font-mono font-semibold text-primary hover:underline"
+                          >
+                            {entry.reference_code ?? `INV-${entry.invoice_id}`}
                           </Link>
                         ) : (
                           <div className="font-mono font-semibold">{entry.reference_code ?? "—"}</div>

@@ -7,10 +7,12 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock,
+  Download,
   Edit3,
   MessageSquare,
   PlusCircle,
   RefreshCw,
+  Truck,
   XCircle,
 } from "lucide-react";
 import { MobileSalesLayout } from "@/components/layouts/MobileSalesLayout";
@@ -238,6 +240,82 @@ export function SalesmanOrderDetailPage() {
                     Cancelled by {order.cancelled_by_name ?? "Staff"} on {formatDateTimeIst(order.cancelled_at)}
                   </div>
                   <div>Reason: {order.cancellation_reason}</div>
+                </div>
+              )}
+
+              {/* Phase 8: Salesman Invoice Availability & Dispatch / Delivery Status */}
+              {order.invoice_id && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 text-xs space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="font-bold text-emerald-950">
+                        GST Invoice: {order.invoice_number ?? "Draft Being Prepared"}
+                      </div>
+                      {order.invoice_grand_total_paisa != null && (
+                        <div className="text-emerald-900">
+                          Total: {formatInrFromPaisa(order.invoice_grand_total_paisa)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <StatusBadge status={order.invoice_doc_status ?? "DRAFT"} />
+                    </div>
+                  </div>
+                  {order.invoice_doc_status === "ISSUED" && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={async () => {
+                        try {
+                          const blob = await api.fetchInvoicePdfBlob(order.invoice_id!);
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `${(order.invoice_number ?? `INV-${order.invoice_id}`).replaceAll("/", "-")}.pdf`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        } catch {
+                          setActionError("Unable to download Invoice PDF right now.");
+                        }
+                      }}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download GST Invoice PDF
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {(order.dispatches ?? []).length > 0 && (
+                <div className="rounded-lg border p-3 text-xs space-y-2">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <Truck className="h-3.5 w-3.5 text-primary" />
+                    Dispatch &amp; Delivery Updates
+                  </div>
+                  {(order.dispatches ?? []).map((d) => (
+                    <div key={d.id} className="rounded bg-secondary/50 p-2 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold">{d.dispatch_number}</span>
+                        <StatusBadge status={d.status} />
+                      </div>
+                      <div className="text-muted-foreground">
+                        {d.total_dispatched_pkts} pkts · Dispatch: {formatOrderDate(d.dispatch_date)}
+                        {d.vehicle_number ? ` · ${d.vehicle_number}` : ""}
+                      </div>
+                      {d.delivery_date && (
+                        <div className="font-medium text-emerald-800">
+                          Delivered: {formatOrderDate(d.delivery_date)} ({d.total_received_pkts} pkts received)
+                        </div>
+                      )}
+                      {d.delivery_exception_reason && (
+                        <div className="font-medium text-red-700">
+                          Exception: {d.delivery_exception_reason}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
