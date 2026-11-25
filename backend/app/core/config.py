@@ -1,8 +1,8 @@
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -28,7 +28,10 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 480
 
-    CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
     ENABLE_DEV_SEED: bool = True
 
     @field_validator("DATABASE_URL", "TEST_DATABASE_URL", mode="before")
@@ -47,12 +50,14 @@ class Settings(BaseSettings):
     def parse_cors_origins(cls, value: str | list[str]) -> list[str]:
         if isinstance(value, str):
             stripped = value.strip()
+            if not stripped:
+                return []
             if stripped.startswith("["):
                 import json
 
-                return list(json.loads(stripped))
-            return [origin.strip() for origin in stripped.split(",") if origin.strip()]
-        return value
+                return [str(o).strip().rstrip("/") for o in json.loads(stripped) if str(o).strip()]
+            return [origin.strip().rstrip("/") for origin in stripped.split(",") if origin.strip()]
+        return [str(o).strip().rstrip("/") for o in value if str(o).strip()]
 
     @model_validator(mode="after")
     def validate_production_safety(self) -> "Settings":
