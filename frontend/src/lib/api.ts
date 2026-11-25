@@ -2598,3 +2598,707 @@ export const financeApi = {
     return request<ProfitabilityReport>(`/finance/profitability${qs ? `?${qs}` : ""}`);
   },
 };
+
+// ── Phase 10: Centralized Audit, IAM Governance, Cross-Module Reconciliation & Management Intelligence ──
+
+export interface AuditLogEntry {
+  id: number;
+  actor_user_id: number | null;
+  actor_username: string | null;
+  actor_full_name: string | null;
+  actor_role: string;
+  occurred_at: string;
+  action: string;
+  entity_schema: string;
+  entity_table: string;
+  entity_id: number;
+  correlation_ref: string | null;
+  before_state: Record<string, unknown> | null;
+  after_state: Record<string, unknown> | null;
+  metadata_json: Record<string, unknown> | null;
+  reason: string | null;
+}
+
+export interface PaginatedAuditLogs {
+  items: AuditLogEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface AuditSummary {
+  total_events: number;
+  security_events_count: number;
+  login_failures_count: number;
+  access_denied_count: number;
+  distinct_active_actors: number;
+  by_schema: Array<{ entity_schema: string; count: number }>;
+  top_actions: Array<{ action: string; count: number }>;
+}
+
+export interface UserActivityRow {
+  user_id: number;
+  username: string;
+  full_name: string;
+  role_code: string;
+  role_name: string;
+  is_active: boolean;
+  total_actions: number;
+  login_success_count: number;
+  login_failed_count: number;
+  access_denied_count: number;
+  business_events_count: number;
+  last_login_at: string | null;
+  last_event_at: string | null;
+}
+
+export interface IamRoleOption {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+}
+
+export interface IamManagedUser {
+  id: number;
+  username: string;
+  phone: string | null;
+  full_name: string;
+  role_code: string;
+  role_name: string;
+  is_active: boolean;
+  last_login_at: string | null;
+  created_at: string;
+}
+
+export interface InventoryReconRow {
+  item_type: string;
+  item_id: number;
+  code: string;
+  name: string;
+  item_category: string;
+  base_uom: string;
+  display_uom: string;
+  display_factor: string;
+  opening_qty_base: string;
+  inward_purchase_qty_base: string;
+  inward_production_qty_base: string;
+  inward_returns_qty_base: string;
+  inward_adjustment_qty_base: string;
+  total_inward_qty_base: string;
+  outward_production_issue_qty_base: string;
+  outward_dispatch_qty_base: string;
+  outward_damage_wastage_qty_base: string;
+  outward_supplier_return_qty_base: string;
+  outward_adjustment_qty_base: string;
+  total_outward_qty_base: string;
+  expected_closing_qty_base: string;
+  persisted_closing_qty_base: string;
+  difference_qty_base: string;
+  cost_lot_remaining_qty_base: string;
+  cost_lot_difference_qty_base: string;
+  status: string;
+}
+
+export interface InventoryReconReport {
+  period_start: string;
+  period_end: string;
+  cutoff_at: string;
+  total_items: number;
+  matched_count: number;
+  mismatch_count: number;
+  items: InventoryReconRow[];
+}
+
+export interface SalesReconRow {
+  sales_order_id: number;
+  order_number: string;
+  order_date: string;
+  order_status: string;
+  customer_name: string;
+  ordered_qty_pkts: number;
+  invoiced_qty_pkts: number;
+  active_invoice_count: number;
+  invoice_numbers: string[];
+  status: string;
+  issue_code: string | null;
+  issue_detail: string | null;
+}
+
+export interface InvoiceReconRow {
+  invoice_id: number;
+  invoice_number: string;
+  invoice_date: string;
+  doc_status: string;
+  supply_type: string;
+  persisted_taxable_paisa: number;
+  computed_taxable_paisa: number;
+  persisted_tax_paisa: number;
+  computed_tax_paisa: number;
+  persisted_grand_total_paisa: number;
+  computed_grand_total_paisa: number;
+  persisted_credited_paisa: number;
+  computed_credited_paisa: number;
+  status: string;
+  issue_code: string | null;
+  issue_detail: string | null;
+}
+
+export interface PaymentReconRow {
+  payment_id: number;
+  payment_number: string;
+  payment_date: string;
+  customer_name: string;
+  amount_paisa: number;
+  persisted_allocated_paisa: number;
+  computed_allocated_paisa: number;
+  persisted_refunded_paisa: number;
+  computed_refunded_paisa: number;
+  unallocated_paisa: number;
+  status: string;
+  issue_code: string | null;
+  issue_detail: string | null;
+}
+
+export interface DispatchReconRow {
+  invoice_id: number;
+  invoice_number: string;
+  invoice_date: string;
+  dispatch_status: string;
+  invoiced_qty_pkts: number;
+  dispatched_qty_pkts: number;
+  ledger_dispatch_qty_pkts: number;
+  pending_qty_pkts: number;
+  status: string;
+  issue_code: string | null;
+  issue_detail: string | null;
+}
+
+export interface ProductionReconRow {
+  production_run_id: number;
+  run_number: string;
+  run_date: string;
+  sku_code: string;
+  run_status: string;
+  expected_output_pkts: number;
+  actual_good_pkts: number;
+  rejected_pkts: number;
+  ledger_output_pkts: number;
+  bom_variance_flags_count: number;
+  cost_summary_paisa: number | null;
+  lot_consumption_cost_with_overheads_paisa: number | null;
+  status: string;
+  issue_code: string | null;
+  issue_detail: string | null;
+}
+
+export interface ReconDiscrepancy {
+  id: number;
+  reconciliation_run_id: number;
+  domain: string;
+  discrepancy_code: string;
+  severity: string;
+  entity_schema: string;
+  entity_table: string;
+  entity_id: number;
+  entity_ref: string;
+  expected_value: Record<string, unknown>;
+  actual_value: Record<string, unknown>;
+  difference_summary: string;
+  status: string;
+  assigned_to: number | null;
+  assigned_to_name: string | null;
+  investigation_notes: string | null;
+  proposed_action: string | null;
+  corrective_action_type: string | null;
+  approved_by: number | null;
+  approved_by_name: string | null;
+  approved_at: string | null;
+  resolution_notes: string | null;
+  resolution_ref_table: string | null;
+  resolution_ref_id: number | null;
+  resolved_by: number | null;
+  resolved_by_name: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  version: number;
+}
+
+export interface ReconEvent {
+  id: number;
+  reconciliation_run_id: number;
+  discrepancy_id: number | null;
+  actor_user_id: number;
+  actor_name: string;
+  actor_role: string;
+  event_type: string;
+  from_status: string | null;
+  to_status: string;
+  notes: string | null;
+  payload: Record<string, unknown> | null;
+  occurred_at: string;
+}
+
+export interface ReconRunSummary {
+  id: number;
+  run_number: string;
+  financial_year: string;
+  domain: string;
+  status: string;
+  period_start: string;
+  period_end: string;
+  cutoff_at: string;
+  scope_filter: Record<string, unknown>;
+  summary_snapshot: Record<string, unknown>;
+  discrepancy_count: number;
+  resolved_count: number;
+  started_by: number;
+  started_by_name: string;
+  started_at: string;
+  last_rerun_at: string | null;
+  closed_by: number | null;
+  closed_by_name: string | null;
+  closed_at: string | null;
+  closure_notes: string | null;
+  version: number;
+}
+
+export interface ReconRunDetail extends ReconRunSummary {
+  discrepancies: ReconDiscrepancy[];
+  events: ReconEvent[];
+}
+
+export interface IntelOrderPipeline {
+  total_orders: number;
+  pending_verification: number;
+  approved: number;
+  invoiced: number;
+  dispatched_or_partial: number;
+  rejected_or_cancelled: number;
+  shortage_orders: number;
+}
+
+export interface IntelProductSalesRow {
+  pack_size_id: number;
+  sku_code: string;
+  display_name: string;
+  hsn_code: string;
+  invoiced_qty_pkts: number;
+  net_sold_qty_pkts: number;
+  net_revenue_paisa: number;
+  total_cogs_paisa: number;
+  gross_profit_paisa: number;
+  gross_margin_pct: string;
+}
+
+export interface IntelCustomerSalesRow {
+  customer_id: number;
+  customer_code: string;
+  customer_name: string;
+  customer_type: string;
+  invoice_count: number;
+  net_revenue_paisa: number;
+  gross_profit_paisa: number;
+  gross_margin_pct: string;
+  cash_received_paisa: number;
+  outstanding_receivables_paisa: number;
+}
+
+export interface IntelDailyTrendRow {
+  period_date: string;
+  invoice_count: number;
+  net_revenue_paisa: number;
+  total_cogs_paisa: number;
+  gross_profit_paisa: number;
+  cash_collected_paisa: number;
+}
+
+export interface IntelLowStockRow {
+  item_type: string;
+  item_id: number;
+  code: string;
+  name: string;
+  item_category: string;
+  display_uom: string;
+  base_uom: string;
+  display_factor: string;
+  physical_qty_base: string;
+  reserved_qty_base: string;
+  available_qty_base: string;
+  reorder_level_base: string;
+  open_lot_value_paisa: number;
+}
+
+export interface IntelProductionSkuRow {
+  pack_size_id: number;
+  sku_code: string;
+  display_name: string;
+  runs_count: number;
+  expected_output_pkts: number;
+  actual_good_pkts: number;
+  rejected_pkts: number;
+  yield_efficiency_pct: string;
+  total_cost_paisa: number;
+  avg_cost_per_pkt_paisa: number | null;
+}
+
+export interface ManagementIntelligenceDashboard {
+  period_start: string;
+  period_end: string;
+  as_of_date: string;
+  financial_year: string;
+  sales: {
+    gross_taxable_paisa: number;
+    gst_collected_paisa: number;
+    credited_taxable_paisa: number;
+    net_sales_excl_gst_paisa: number;
+    gross_invoiced_total_paisa: number;
+    invoice_count: number;
+    credit_note_count: number;
+    order_pipeline: IntelOrderPipeline;
+    top_products: IntelProductSalesRow[];
+    top_customers: IntelCustomerSalesRow[];
+    daily_trend: IntelDailyTrendRow[];
+  };
+  inventory: {
+    total_items: number;
+    raw_material_count: number;
+    packaging_material_count: number;
+    finished_good_count: number;
+    total_stock_valuation_paisa: number;
+    low_stock_count: number;
+    pending_adjustments_count: number;
+    low_stock_alerts: IntelLowStockRow[];
+    period_movements: Array<{
+      movement_type: string;
+      movement_count: number;
+      total_abs_qty_base: string;
+      total_cost_paisa: number;
+    }>;
+  };
+  production: {
+    total_runs: number;
+    posted_runs: number;
+    in_progress_runs: number;
+    planned_runs: number;
+    expected_output_pkts: number;
+    actual_good_output_pkts: number;
+    rejected_output_pkts: number;
+    yield_efficiency_pct: string;
+    total_batch_cost_paisa: number;
+    weighted_avg_unit_cost_paisa: number | null;
+    total_wastage_damage_cost_paisa: number;
+    flagged_variances_count: number;
+    open_variance_alerts_count: number;
+    by_sku: IntelProductionSkuRow[];
+  };
+  finance: {
+    payments_received_paisa: number;
+    refunds_paisa: number;
+    net_cash_collected_paisa: number;
+    customer_advances_paisa: number;
+    total_outstanding_receivables_paisa: number;
+    overdue_receivables_paisa: number;
+    not_due_receivables_paisa: number;
+    bucket_0_30_paisa: number;
+    bucket_31_60_paisa: number;
+    bucket_61_90_paisa: number;
+    bucket_90_plus_paisa: number;
+    total_cogs_paisa: number;
+    gross_profit_paisa: number;
+    gross_margin_pct: string;
+    profitability_disclaimer: string;
+  };
+  operations: {
+    pending_approval_orders: number;
+    shortage_orders: number;
+    pending_purchase_orders: number;
+    pending_goods_receipts: number;
+    pending_stock_adjustments: number;
+    pending_dispatches: number;
+    delivery_exceptions: number;
+    open_reconciliation_discrepancies: number;
+    critical_high_discrepancies: number;
+    security_events_in_period: number;
+  };
+  watchlist: Array<{
+    severity: string;
+    category: string;
+    title: string;
+    detail: string;
+    link_path: string;
+  }>;
+}
+
+async function fetchCsvBlob(path: string, errorMsg: string): Promise<Blob> {
+  const token = getStoredToken();
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    throw new ApiClientError(res.status, "CSV_EXPORT_ERROR", errorMsg);
+  }
+  return res.blob();
+}
+
+export const auditApi = {
+  getLogs: (opts?: {
+    actorUserId?: number;
+    actorRole?: string;
+    action?: string;
+    entitySchema?: string;
+    entityTable?: string;
+    entityId?: number;
+    correlationRef?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    search?: string;
+    page?: number;
+    pageSize?: number;
+  }) => {
+    const p = new URLSearchParams();
+    if (opts?.actorUserId) p.set("actor_user_id", String(opts.actorUserId));
+    if (opts?.actorRole) p.set("actor_role", opts.actorRole);
+    if (opts?.action) p.set("action", opts.action);
+    if (opts?.entitySchema) p.set("entity_schema", opts.entitySchema);
+    if (opts?.entityTable) p.set("entity_table", opts.entityTable);
+    if (opts?.entityId !== undefined) p.set("entity_id", String(opts.entityId));
+    if (opts?.correlationRef) p.set("correlation_ref", opts.correlationRef);
+    if (opts?.dateFrom) p.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) p.set("date_to", opts.dateTo);
+    if (opts?.search) p.set("search", opts.search);
+    if (opts?.page) p.set("page", String(opts.page));
+    if (opts?.pageSize) p.set("page_size", String(opts.pageSize));
+    const qs = p.toString();
+    return request<PaginatedAuditLogs>(`/audit/logs${qs ? `?${qs}` : ""}`);
+  },
+  exportCsvBlob: (opts?: {
+    action?: string;
+    entitySchema?: string;
+    correlationRef?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    search?: string;
+  }) => {
+    const p = new URLSearchParams();
+    if (opts?.action) p.set("action", opts.action);
+    if (opts?.entitySchema) p.set("entity_schema", opts.entitySchema);
+    if (opts?.correlationRef) p.set("correlation_ref", opts.correlationRef);
+    if (opts?.dateFrom) p.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) p.set("date_to", opts.dateTo);
+    if (opts?.search) p.set("search", opts.search);
+    const qs = p.toString();
+    return fetchCsvBlob(`/audit/logs/export/csv${qs ? `?${qs}` : ""}`, "Failed to export audit logs CSV.");
+  },
+  getSummary: (opts?: { dateFrom?: string; dateTo?: string }) => {
+    const p = new URLSearchParams();
+    if (opts?.dateFrom) p.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) p.set("date_to", opts.dateTo);
+    const qs = p.toString();
+    return request<AuditSummary>(`/audit/summary${qs ? `?${qs}` : ""}`);
+  },
+  getUserActivity: (opts?: { dateFrom?: string; dateTo?: string; roleCode?: string }) => {
+    const p = new URLSearchParams();
+    if (opts?.dateFrom) p.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) p.set("date_to", opts.dateTo);
+    if (opts?.roleCode) p.set("role_code", opts.roleCode);
+    const qs = p.toString();
+    return request<UserActivityRow[]>(`/audit/user-activity${qs ? `?${qs}` : ""}`);
+  },
+};
+
+export const iamApi = {
+  getRoles: () => request<IamRoleOption[]>("/iam/roles"),
+  getUsers: () => request<IamManagedUser[]>("/iam/users"),
+  createUser: (payload: {
+    username: string;
+    full_name: string;
+    phone?: string | null;
+    role_code: string;
+    password: string;
+    employee_code?: string | null;
+    territory?: string | null;
+  }) =>
+    request<IamManagedUser>("/iam/users", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateUser: (
+    userId: number,
+    payload: {
+      role_code?: string;
+      is_active?: boolean;
+      full_name?: string;
+      reason: string;
+    }
+  ) =>
+    request<IamManagedUser>(`/iam/users/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+};
+
+export const reconApi = {
+  getInventoryReport: (opts?: {
+    periodStart?: string;
+    periodEnd?: string;
+    itemCategory?: string;
+    onlyMismatches?: boolean;
+  }) => {
+    const p = new URLSearchParams();
+    if (opts?.periodStart) p.set("period_start", opts.periodStart);
+    if (opts?.periodEnd) p.set("period_end", opts.periodEnd);
+    if (opts?.itemCategory) p.set("item_category", opts.itemCategory);
+    if (opts?.onlyMismatches) p.set("only_mismatches", "true");
+    const qs = p.toString();
+    return request<InventoryReconReport>(`/reconciliation/reports/inventory${qs ? `?${qs}` : ""}`);
+  },
+  exportInventoryCsvBlob: (opts?: {
+    periodStart?: string;
+    periodEnd?: string;
+    itemCategory?: string;
+    onlyMismatches?: boolean;
+  }) => {
+    const p = new URLSearchParams();
+    if (opts?.periodStart) p.set("period_start", opts.periodStart);
+    if (opts?.periodEnd) p.set("period_end", opts.periodEnd);
+    if (opts?.itemCategory) p.set("item_category", opts.itemCategory);
+    if (opts?.onlyMismatches) p.set("only_mismatches", "true");
+    const qs = p.toString();
+    return fetchCsvBlob(
+      `/reconciliation/reports/inventory/export/csv${qs ? `?${qs}` : ""}`,
+      "Failed to export inventory reconciliation CSV."
+    );
+  },
+  getSalesReport: (opts?: { periodStart?: string; periodEnd?: string }) => {
+    const p = new URLSearchParams();
+    if (opts?.periodStart) p.set("period_start", opts.periodStart);
+    if (opts?.periodEnd) p.set("period_end", opts.periodEnd);
+    const qs = p.toString();
+    return request<SalesReconRow[]>(`/reconciliation/reports/sales${qs ? `?${qs}` : ""}`);
+  },
+  getInvoicesReport: (opts?: { periodStart?: string; periodEnd?: string }) => {
+    const p = new URLSearchParams();
+    if (opts?.periodStart) p.set("period_start", opts.periodStart);
+    if (opts?.periodEnd) p.set("period_end", opts.periodEnd);
+    const qs = p.toString();
+    return request<InvoiceReconRow[]>(`/reconciliation/reports/invoices${qs ? `?${qs}` : ""}`);
+  },
+  getPaymentsReport: (opts?: { periodStart?: string; periodEnd?: string }) => {
+    const p = new URLSearchParams();
+    if (opts?.periodStart) p.set("period_start", opts.periodStart);
+    if (opts?.periodEnd) p.set("period_end", opts.periodEnd);
+    const qs = p.toString();
+    return request<PaymentReconRow[]>(`/reconciliation/reports/payments${qs ? `?${qs}` : ""}`);
+  },
+  getDispatchReport: (opts?: { periodStart?: string; periodEnd?: string }) => {
+    const p = new URLSearchParams();
+    if (opts?.periodStart) p.set("period_start", opts.periodStart);
+    if (opts?.periodEnd) p.set("period_end", opts.periodEnd);
+    const qs = p.toString();
+    return request<DispatchReconRow[]>(`/reconciliation/reports/dispatch${qs ? `?${qs}` : ""}`);
+  },
+  getProductionReport: (opts?: { periodStart?: string; periodEnd?: string }) => {
+    const p = new URLSearchParams();
+    if (opts?.periodStart) p.set("period_start", opts.periodStart);
+    if (opts?.periodEnd) p.set("period_end", opts.periodEnd);
+    const qs = p.toString();
+    return request<ProductionReconRow[]>(`/reconciliation/reports/production${qs ? `?${qs}` : ""}`);
+  },
+  getRuns: (opts?: { domain?: string; status?: string }) => {
+    const p = new URLSearchParams();
+    if (opts?.domain) p.set("domain", opts.domain);
+    if (opts?.status) p.set("status", opts.status);
+    const qs = p.toString();
+    return request<ReconRunSummary[]>(`/reconciliation/runs${qs ? `?${qs}` : ""}`);
+  },
+  startRun: (payload: {
+    domain: string;
+    period_start?: string | null;
+    period_end?: string | null;
+    item_category?: string | null;
+  }) =>
+    request<ReconRunDetail>("/reconciliation/runs", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getRunDetail: (runId: number) => request<ReconRunDetail>(`/reconciliation/runs/${runId}`),
+  rerunRun: (runId: number) =>
+    request<ReconRunDetail>(`/reconciliation/runs/${runId}/rerun`, { method: "POST" }),
+  closeRun: (runId: number, closureNotes: string) =>
+    request<ReconRunDetail>(`/reconciliation/runs/${runId}/close`, {
+      method: "POST",
+      body: JSON.stringify({ closure_notes: closureNotes }),
+    }),
+  getDiscrepancies: (opts?: { domain?: string; status?: string }) => {
+    const p = new URLSearchParams();
+    if (opts?.domain) p.set("domain", opts.domain);
+    if (opts?.status) p.set("status", opts.status);
+    const qs = p.toString();
+    return request<ReconDiscrepancy[]>(`/reconciliation/discrepancies${qs ? `?${qs}` : ""}`);
+  },
+  investigateDiscrepancy: (
+    discId: number,
+    payload: { assigned_to?: number | null; investigation_notes: string }
+  ) =>
+    request<ReconDiscrepancy>(`/reconciliation/discrepancies/${discId}/investigate`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  proposeCorrection: (
+    discId: number,
+    payload: {
+      corrective_action_type: string;
+      proposed_action: string;
+      investigation_notes?: string | null;
+    }
+  ) =>
+    request<ReconDiscrepancy>(`/reconciliation/discrepancies/${discId}/propose`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  approveCorrection: (discId: number, notes?: string | null) =>
+    request<ReconDiscrepancy>(`/reconciliation/discrepancies/${discId}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ notes: notes || null }),
+    }),
+  resolveDiscrepancy: (
+    discId: number,
+    payload: {
+      resolution_notes: string;
+      adjustment_type?: string;
+      entered_qty?: string | number | null;
+      entered_uom?: string | null;
+      unit_cost_paisa_per_base?: number | null;
+      dismiss?: boolean;
+    }
+  ) =>
+    request<ReconDiscrepancy>(`/reconciliation/discrepancies/${discId}/resolve`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+};
+
+export const intelApi = {
+  getDashboard: (opts?: { dateFrom?: string; dateTo?: string; asOfDate?: string }) => {
+    const p = new URLSearchParams();
+    if (opts?.dateFrom) p.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) p.set("date_to", opts.dateTo);
+    if (opts?.asOfDate) p.set("as_of_date", opts.asOfDate);
+    const qs = p.toString();
+    return request<ManagementIntelligenceDashboard>(`/intelligence/dashboard${qs ? `?${qs}` : ""}`);
+  },
+  exportCsvBlob: (opts?: { dateFrom?: string; dateTo?: string; asOfDate?: string }) => {
+    const p = new URLSearchParams();
+    if (opts?.dateFrom) p.set("date_from", opts.dateFrom);
+    if (opts?.dateTo) p.set("date_to", opts.dateTo);
+    if (opts?.asOfDate) p.set("as_of_date", opts.asOfDate);
+    const qs = p.toString();
+    return fetchCsvBlob(
+      `/intelligence/reports/export/csv${qs ? `?${qs}` : ""}`,
+      "Failed to export executive intelligence CSV."
+    );
+  },
+};

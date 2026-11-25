@@ -2,6 +2,7 @@ import React from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { LoginPage } from "@/pages/LoginPage";
+import { AdminAuditExplorerPage } from "@/pages/admin/AdminAuditExplorerPage";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { AdminBomPage } from "@/pages/admin/AdminBomPage";
 import { AdminBillingDashboardPage } from "@/pages/admin/AdminBillingDashboardPage";
@@ -13,6 +14,7 @@ import { AdminDispatchDetailPage } from "@/pages/admin/AdminDispatchDetailPage";
 import { AdminFinanceDashboardPage } from "@/pages/admin/AdminFinanceDashboardPage";
 import { AdminGoodsReceiptsPage } from "@/pages/admin/AdminGoodsReceiptsPage";
 import { AdminIncomingOrdersPage } from "@/pages/admin/AdminIncomingOrdersPage";
+import { AdminIntelligenceDashboardPage } from "@/pages/admin/AdminIntelligenceDashboardPage";
 import { AdminInventoryDashboardPage } from "@/pages/admin/AdminInventoryDashboardPage";
 import { AdminInventoryLedgerPage } from "@/pages/admin/AdminInventoryLedgerPage";
 import { AdminInvoiceDetailPage } from "@/pages/admin/AdminInvoiceDetailPage";
@@ -24,9 +26,11 @@ import { AdminProductionVarianceReportPage } from "@/pages/admin/AdminProduction
 import { AdminProfitabilityPage } from "@/pages/admin/AdminProfitabilityPage";
 import { AdminPurchaseOrdersPage } from "@/pages/admin/AdminPurchaseOrdersPage";
 import { AdminReceivablesPage } from "@/pages/admin/AdminReceivablesPage";
+import { AdminReconciliationPage } from "@/pages/admin/AdminReconciliationPage";
 import { AdminStockAdjustmentsPage } from "@/pages/admin/AdminStockAdjustmentsPage";
 import { AdminStockReportsPage } from "@/pages/admin/AdminStockReportsPage";
 import { AdminSuppliersPage } from "@/pages/admin/AdminSuppliersPage";
+import { AdminUserManagementPage } from "@/pages/admin/AdminUserManagementPage";
 import { NewOrderPage } from "@/pages/salesman/NewOrderPage";
 import { SalesmanHomePage } from "@/pages/salesman/SalesmanHomePage";
 import { SalesmanOrderDetailPage } from "@/pages/salesman/SalesmanOrderDetailPage";
@@ -331,6 +335,42 @@ export function App() {
         element={
           <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
             <AdminProfitabilityPage />
+          </RequireRole>
+        }
+      />
+
+      {/* Phase 10: Centralized Audit, Cross-Module Reconciliation, Management Intelligence & IAM Governance */}
+      <Route
+        path="/admin/intelligence"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminIntelligenceDashboardPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/reconciliation"
+        element={
+          <RequireRole
+            allowedRoles={["FACTORY_ADMIN", "PRODUCTION_SUPERVISOR", "OWNER", "ACCOUNTANT_AUDITOR"]}
+          >
+            <AdminReconciliationPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/audit"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminAuditExplorerPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminUserManagementPage />
           </RequireRole>
         }
       />

@@ -52,6 +52,20 @@ const STATUS_VARIANTS: Record<string, { label: string; variant: "default" | "sec
   "31_60": { label: "31–60 Days Overdue", variant: "warning" },
   "61_90": { label: "61–90 Days Overdue", variant: "destructive" },
   ABOVE_90: { label: "> 90 Days Overdue", variant: "destructive" },
+  NOT_STARTED: { label: "Not Started", variant: "secondary" },
+  RECONCILED: { label: "Reconciled", variant: "success" },
+  DISCREPANCY_FOUND: { label: "Discrepancy Found", variant: "destructive" },
+  ACTION_PROPOSED: { label: "Action Proposed", variant: "default" },
+  RESOLVED: { label: "Resolved", variant: "success" },
+  DISMISSED: { label: "Dismissed", variant: "outline" },
+  MATCHED: { label: "Matched", variant: "success" },
+  MISMATCH: { label: "Mismatch", variant: "destructive" },
+  DISCREPANCY: { label: "Discrepancy", variant: "destructive" },
+  CRITICAL: { label: "Critical", variant: "destructive" },
+  HIGH: { label: "High", variant: "destructive" },
+  MEDIUM: { label: "Medium", variant: "warning" },
+  LOW: { label: "Low", variant: "secondary" },
+  INFO: { label: "Info", variant: "outline" },
 };
 
 export function StatusBadge({ status }: { status: string }) {

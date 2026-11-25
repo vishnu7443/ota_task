@@ -14,11 +14,15 @@ import {
   IndianRupee,
   Layers,
   LayoutDashboard,
+  LineChart,
   LogOut,
   PackageCheck,
   Receipt,
+  Scale,
+  ShieldCheck,
   TrendingUp,
   Truck,
+  UserCog,
   Users,
   Wallet,
 } from "lucide-react";
@@ -186,6 +190,24 @@ export function DesktopAdminLayout({
                 </nav>
               </div>
             )}
+
+            <div>
+              <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Audit &amp; Intelligence
+              </p>
+              <nav className="space-y-1">
+                {canViewSalesOrders && (
+                  <SidebarLink to="/admin/intelligence" icon={LineChart} label="Management Intel" />
+                )}
+                <SidebarLink to="/admin/reconciliation" icon={Scale} label="Reconciliation" />
+                {canViewSalesOrders && (
+                  <>
+                    <SidebarLink to="/admin/audit" icon={ShieldCheck} label="Audit Explorer" />
+                    <SidebarLink to="/admin/users" icon={UserCog} label="Users &amp; Roles" />
+                  </>
+                )}
+              </nav>
+            </div>
           </div>
 
           <div className="mt-6 border-t pt-4">
