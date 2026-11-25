@@ -9,6 +9,7 @@ from app.modules.audit import models as audit_models  # noqa: F401
 from app.modules.iam import models as iam_models  # noqa: F401
 from app.modules.inventory import models as inventory_models  # noqa: F401
 from app.modules.orders import models as orders_models  # noqa: F401
+from app.modules.purchasing import models as purchasing_models  # noqa: F401
 from app.modules.sales import models as sales_models  # noqa: F401
 
 config = context.config
@@ -26,7 +27,7 @@ def get_url() -> str:
 
 def include_name(name: str | None, type_: str, parent_names: dict) -> bool:
     if type_ == "schema":
-        return name in {"iam", "sales", "inventory", "audit"}
+        return name in {"iam", "sales", "purchasing", "production", "inventory", "audit"}
     return True
 
 

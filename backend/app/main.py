@@ -12,7 +12,9 @@ from app.core.database import check_db_health, get_db
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
 from app.modules.iam.router import router as auth_router
+from app.modules.inventory.router import router as inventory_router
 from app.modules.orders.router import admin_orders_router, salesman_orders_router
+from app.modules.purchasing.router import router as purchasing_router
 from app.modules.sales.router import router as sales_router
 
 settings = get_settings()
@@ -73,6 +75,8 @@ def create_app() -> FastAPI:
     app.include_router(sales_router, prefix=settings.API_V1_PREFIX)
     app.include_router(salesman_orders_router, prefix=settings.API_V1_PREFIX)
     app.include_router(admin_orders_router, prefix=settings.API_V1_PREFIX)
+    app.include_router(purchasing_router, prefix=settings.API_V1_PREFIX)
+    app.include_router(inventory_router, prefix=settings.API_V1_PREFIX)
 
     return app
 
