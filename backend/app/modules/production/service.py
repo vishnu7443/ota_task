@@ -1978,6 +1978,17 @@ def post_production_run(
             },
             reason=f"Atomically posted {run.run_number} to inventory ledger & variance audit",
         )
+
+        # Phase 9: Persist automatic v1 PRELIMINARY material & packaging cost snapshot
+        from app.modules.costing.service import create_cost_snapshot_for_run
+
+        create_cost_snapshot_for_run(
+            db,
+            actor=actor,
+            run=run,
+            cost_status="PRELIMINARY",
+            notes=f"Initial material & packaging cost snapshot recorded upon posting {run.run_number}",
+        )
         db.commit()
     except Exception:
         db.rollback()

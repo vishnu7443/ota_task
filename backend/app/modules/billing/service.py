@@ -55,6 +55,7 @@ from app.modules.billing.schemas import (
     InvoiceAuditOut,
     InvoiceDetailOut,
     InvoiceItemOut,
+    InvoicePaymentAllocationOut,
     InvoiceSummaryOut,
     InvoiceTaxComponentOut,
     IssueInvoiceRequest,
@@ -383,6 +384,15 @@ def _hydrate_invoice_detail(db: Session, inv: Invoice, *, include_audit: bool = 
     inv_map = {inv.id: inv}
     inv_items_map = {it.id: it for it in inv.items}
 
+    from app.modules.finance.models import Payment, PaymentAllocation
+
+    alloc_rows = db.execute(
+        select(PaymentAllocation, Payment)
+        .join(Payment, Payment.id == PaymentAllocation.payment_id)
+        .where(PaymentAllocation.invoice_id == inv.id)
+        .order_by(PaymentAllocation.allocated_at.asc(), PaymentAllocation.id.asc())
+    ).all()
+
     summary = _hydrate_invoice_summary(inv, ord_map=ord_map, dispatched_by_item=dispatched_by_item)
     return InvoiceDetailOut(
         **summary.model_dump(),
@@ -465,6 +475,21 @@ def _hydrate_invoice_detail(db: Session, inv: Invoice, *, include_audit: bool = 
                 ps_map=ps_map,
             )
             for dsp in inv.dispatches
+        ],
+        allocations=[
+            InvoicePaymentAllocationOut(
+                id=pa.id,
+                payment_id=pmt.id,
+                payment_number=pmt.payment_number,
+                payment_date=pmt.payment_date,
+                payment_mode=pmt.payment_mode,
+                reference_no=pmt.reference_no,
+                allocated_paisa=int(pa.allocated_paisa),
+                status=pa.status,
+                allocated_at=pa.allocated_at,
+                reversal_reason=pa.reversal_reason,
+            )
+            for pa, pmt in alloc_rows
         ],
         audit_trail=[
             InvoiceAuditOut(
@@ -625,6 +650,20 @@ def _perform_issue_invoice(
             to_status=OrderStatus.INVOICED,
             changed_by=actor.user_id,
             reason=f"GST Invoice {inv_no} issued",
+        )
+    )
+
+    from app.modules.finance.models import CustomerReceivable
+
+    db.add(
+        CustomerReceivable(
+            customer_id=inv.customer_id,
+            invoice_id=inv.id,
+            invoice_date=inv.invoice_date,
+            due_date=inv.due_date,
+            original_paisa=int(inv.taxable_total_paisa + inv.cgst_total_paisa + inv.sgst_total_paisa + inv.igst_total_paisa + inv.round_off_paisa),
+            credited_paisa=0,
+            paid_paisa=0,
         )
     )
     db.flush()
@@ -1024,12 +1063,66 @@ def _apply_credit_note_issuance(
     cn.issued_by = actor.user_id
     cn.issued_at = now_utc
 
-    inv.credited_paisa = int(inv.credited_paisa) + int(cn.total_reversed_paisa)
-    is_full_cancel = cn.cancel_original_invoice or (inv.credited_paisa >= int(inv.grand_total_paisa))
+    from app.modules.finance import repository as finance_repo
+    from app.modules.finance.models import CustomerReceivable, Payment, PaymentAllocation
+    from app.modules.finance.service import derive_invoice_payment_status, derive_payment_status
+
+    new_credited = int(inv.credited_paisa) + int(cn.total_reversed_paisa)
+    grand_tot = int(inv.grand_total_paisa)
+    excess_paid = max(0, int(inv.paid_paisa) + new_credited - grand_tot)
+
+    if excess_paid > 0:
+        active_allocs = finance_repo.list_active_allocations_for_invoice_for_update(db, inv.id)
+        rem_unwind = excess_paid
+        affected_pmts: set[int] = set()
+        for alloc in active_allocs:
+            if rem_unwind <= 0:
+                break
+            pmt = finance_repo.get_payment(db, alloc.payment_id, for_update=True)
+            assert pmt is not None
+            affected_pmts.add(pmt.id)
+            take_back = min(rem_unwind, int(alloc.allocated_paisa))
+            alloc.status = "REVERSED"
+            alloc.reversed_by = actor.user_id
+            alloc.reversed_at = now_utc
+            alloc.reversal_reason = f"Released upon Credit Note {cn_no}"
+            db.flush()
+            keep_amt = int(alloc.allocated_paisa) - take_back
+            if keep_amt > 0:
+                db.add(
+                    PaymentAllocation(
+                        payment_id=pmt.id,
+                        invoice_id=inv.id,
+                        allocated_paisa=keep_amt,
+                        status="ACTIVE",
+                        allocated_by=actor.user_id,
+                        notes=f"Retained partial balance after Credit Note {cn_no}",
+                    )
+                )
+                db.flush()
+            rem_unwind -= take_back
+
+        for pid in sorted(affected_pmts):
+            pmt_row = db.execute(select(Payment).where(Payment.id == pid)).scalar_one()
+            pmt_row.allocated_paisa = finance_repo.sum_active_allocations_for_payment(db, pid)
+            pmt_row.status = derive_payment_status(pmt_row)
+            pmt_row.version += 1
+
+        inv.paid_paisa = finance_repo.sum_active_allocations_for_invoice(db, inv.id)
+
+    inv.credited_paisa = new_credited
+    is_full_cancel = cn.cancel_original_invoice or (inv.credited_paisa >= grand_tot)
     if is_full_cancel:
         inv.doc_status = "CANCELLED_BY_CN"
-        inv.payment_status = "CREDITED"
+    inv.payment_status = derive_invoice_payment_status(inv)
     inv.version += 1
+
+    ar_row = db.execute(
+        select(CustomerReceivable).where(CustomerReceivable.invoice_id == inv.id).with_for_update()
+    ).scalar_one_or_none()
+    if ar_row is not None:
+        ar_row.credited_paisa = int(inv.credited_paisa)
+        ar_row.paid_paisa = int(inv.paid_paisa)
 
     order = orders_repo.get_order_by_id_for_update(db, inv.sales_order_id)
     assert order is not None
@@ -2171,6 +2264,9 @@ def get_order_billing_dispatch_snapshot(db: Session, order_id: int) -> dict[str,
             "invoice_number": None,
             "invoice_doc_status": None,
             "invoice_grand_total_paisa": None,
+            "invoice_paid_paisa": None,
+            "invoice_outstanding_paisa": None,
+            "invoice_payment_status": None,
             "invoice_dispatch_status": None,
             "dispatches": [],
         }
@@ -2180,6 +2276,9 @@ def get_order_billing_dispatch_snapshot(db: Session, order_id: int) -> dict[str,
         "invoice_number": inv.invoice_number,
         "invoice_doc_status": inv.doc_status,
         "invoice_grand_total_paisa": int(inv.grand_total_paisa),
+        "invoice_paid_paisa": int(inv.paid_paisa),
+        "invoice_outstanding_paisa": int(inv.outstanding_paisa),
+        "invoice_payment_status": inv.payment_status,
         "invoice_dispatch_status": inv.dispatch_status,
         "dispatches": [
             {

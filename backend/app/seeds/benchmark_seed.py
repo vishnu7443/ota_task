@@ -15,9 +15,14 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.security import hash_password
+from app.modules.audit import models as _audit_models  # noqa: F401
+from app.modules.billing import models as _billing_models  # noqa: F401
+from app.modules.costing import models as _costing_models  # noqa: F401
+from app.modules.finance import models as _finance_models  # noqa: F401
 from app.modules.iam.models import CompanyProfile, Role, User
 from app.modules.inventory import service as inventory_service
 from app.modules.inventory.models import Material, UnitConversion
+from app.modules.orders import models as _orders_models  # noqa: F401
 from app.modules.production.models import (
     BomComponent,
     BomHeader,

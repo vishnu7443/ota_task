@@ -216,6 +216,9 @@ def _hydrate_order_summary(
         invoice_number=inv_summary["invoice_number"] if inv_summary else None,
         invoice_doc_status=inv_summary["invoice_doc_status"] if inv_summary else None,
         invoice_dispatch_status=inv_summary["invoice_dispatch_status"] if inv_summary else None,
+        invoice_paid_paisa=inv_summary.get("invoice_paid_paisa") if inv_summary else None,
+        invoice_outstanding_paisa=inv_summary.get("invoice_outstanding_paisa") if inv_summary else None,
+        invoice_payment_status=inv_summary.get("invoice_payment_status") if inv_summary else None,
     )
 
 
@@ -409,6 +412,9 @@ def _build_order_detail(
         invoice_number=billing_snap["invoice_number"],
         invoice_doc_status=billing_snap["invoice_doc_status"],
         invoice_grand_total_paisa=billing_snap["invoice_grand_total_paisa"],
+        invoice_paid_paisa=billing_snap["invoice_paid_paisa"],
+        invoice_outstanding_paisa=billing_snap["invoice_outstanding_paisa"],
+        invoice_payment_status=billing_snap["invoice_payment_status"],
         invoice_dispatch_status=billing_snap["invoice_dispatch_status"],
         tax_estimate=tax_estimate,
         items=item_details,
@@ -1513,6 +1519,9 @@ def list_paginated_orders(
             "invoice_number": inv.invoice_number,
             "invoice_doc_status": inv.doc_status,
             "invoice_dispatch_status": inv.dispatch_status,
+            "invoice_paid_paisa": int(inv.paid_paisa),
+            "invoice_outstanding_paisa": int(inv.outstanding_paisa),
+            "invoice_payment_status": inv.payment_status,
         }
 
     items = [

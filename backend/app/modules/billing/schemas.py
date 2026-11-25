@@ -314,6 +314,19 @@ class ReadyForDispatchInvoiceOut(BaseModel):
     fg_on_hand_sufficient: bool
 
 
+class InvoicePaymentAllocationOut(BaseModel):
+    id: int
+    payment_id: int
+    payment_number: str
+    payment_date: date
+    payment_mode: str
+    reference_no: str | None = None
+    allocated_paisa: int
+    status: str
+    allocated_at: datetime
+    reversal_reason: str | None = None
+
+
 class InvoiceAuditOut(BaseModel):
     id: int
     actor_name: str
@@ -350,6 +363,7 @@ class InvoiceDetailOut(InvoiceSummaryOut):
     tax_components: list[InvoiceTaxComponentOut]
     credit_notes: list[CreditNoteOut]
     dispatches: list[DispatchOut]
+    allocations: list[InvoicePaymentAllocationOut] = Field(default_factory=list)
     audit_trail: list[InvoiceAuditOut]
 
 

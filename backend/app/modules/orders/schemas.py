@@ -225,6 +225,9 @@ class OrderSummaryResponse(BaseModel):
     invoice_number: str | None = None
     invoice_doc_status: str | None = None
     invoice_dispatch_status: str | None = None
+    invoice_paid_paisa: int | None = None
+    invoice_outstanding_paisa: int | None = None
+    invoice_payment_status: str | None = None
 
 
 class OrderDetailResponse(OrderSummaryResponse):

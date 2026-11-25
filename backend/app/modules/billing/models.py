@@ -31,7 +31,7 @@ class FiscalSequence(Base):
     __tablename__ = "fiscal_sequences"
     __table_args__ = (
         CheckConstraint(
-            "doc_type IN ('INVOICE', 'CREDIT_NOTE', 'DISPATCH')",
+            "doc_type IN ('INVOICE', 'CREDIT_NOTE', 'DISPATCH', 'PAYMENT', 'REFUND')",
             name="fs_doc_type_enum",
         ),
         CheckConstraint(
@@ -86,6 +86,10 @@ class Invoice(Base):
         ),
         CheckConstraint("paid_paisa >= 0", name="inv_paid_non_neg"),
         CheckConstraint("credited_paisa >= 0", name="inv_credited_non_neg"),
+        CheckConstraint(
+            "paid_paisa + credited_paisa <= taxable_total_paisa + cgst_total_paisa + sgst_total_paisa + igst_total_paisa + round_off_paisa",
+            name="inv_paid_credited_cap",
+        ),
         CheckConstraint("version >= 1", name="inv_version_pos"),
         CheckConstraint(
             "(supply_type = 'INTRA_STATE' AND igst_total_paisa = 0 AND cgst_total_paisa = sgst_total_paisa) OR "
