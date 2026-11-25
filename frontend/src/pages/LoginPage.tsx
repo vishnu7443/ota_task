@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Factory, Lock, Smartphone, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,19 +15,13 @@ function routeForRole(roleCode: string): string {
 }
 
 export function LoginPage() {
-  const { user, login } = useAuth();
+  const { user, login, logout } = useAuth();
   const navigate = useNavigate();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      navigate(routeForRole(user.role_code), { replace: true });
-    }
-  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +64,29 @@ export function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {user && (
+              <div className="mb-4 flex items-center justify-between gap-2 rounded-lg border bg-secondary/60 px-3 py-2 text-xs">
+                <span className="text-muted-foreground">
+                  Active session: <strong className="text-foreground">{user.full_name}</strong> ({user.role_code})
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => navigate(routeForRole(user.role_code), { replace: true })}
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    Continue
+                  </button>
+                  <button
+                    type="button"
+                    onClick={logout}
+                    className="text-muted-foreground hover:text-foreground hover:underline"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div

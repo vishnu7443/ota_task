@@ -68,23 +68,10 @@ function RequireRole({
   return <>{children}</>;
 }
 
-function RootRedirect() {
-  const { user, isLoading } = useAuth();
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
-        Loading...
-      </div>
-    );
-  }
-  if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={homeForRole(user.role_code)} replace />;
-}
-
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<RootRedirect />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
 
       {/* Mobile-first Salesman routes */}
@@ -385,7 +372,7 @@ export function App() {
         }
       />
 
-      <Route path="*" element={<RootRedirect />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }
