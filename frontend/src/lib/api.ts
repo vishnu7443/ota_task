@@ -1011,6 +1011,32 @@ export const api = {
     return request<ProductPack[]>(`/sales/products${q}`);
   },
   getSalesmen: () => request<SalesmanOption[]>("/sales/salesmen"),
+  createCustomer: (payload: {
+    code: string;
+    name: string;
+    customer_type: "RETAILER" | "DISTRIBUTOR";
+    gstin?: string | null;
+    primary_state_name: string;
+    primary_state_code: string;
+    phone?: string | null;
+    assigned_salesman_id?: number | null;
+    credit_days: number;
+    address_line1: string;
+    city: string;
+    pincode: string;
+  }) =>
+    request<CustomerSummary>("/sales/customers", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updatePackSizePrice: (
+    packSizeId: number,
+    payload: { unit_price_paisa: number; reason: string }
+  ) =>
+    request<ProductPack>(`/sales/products/${packSizeId}/price`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
   submitOrder: (payload: CreateOrderPayload) =>
     request<OrderDetail>("/orders", {
       method: "POST",

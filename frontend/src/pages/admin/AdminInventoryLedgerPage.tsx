@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Download } from "lucide-react";
 import { DesktopAdminLayout } from "@/components/layouts/DesktopAdminLayout";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
@@ -76,10 +77,50 @@ export function AdminInventoryLedgerPage() {
     }
   };
 
+  const exportLedgerCsv = () => {
+    if (entries.length === 0) return;
+    const esc = (v: string | number) => `"${String(v).replaceAll('"', '""')}"`;
+    const csv = [
+      ["Timestamp (IST)", "Code", "Item", "Movement Type", "Entered Qty", "Entered UOM", "Base Delta", "Base UOM", "Total Cost Rs", "Doc Type", "Source Ref", "Actor", "Notes"].map(esc).join(","),
+      ...entries.map((e) =>
+        [
+          e.occurred_at,
+          e.item_code,
+          e.item_name,
+          e.movement_type,
+          e.entered_qty ?? "",
+          e.entered_uom ?? "",
+          e.signed_qty_base,
+          e.base_uom,
+          (e.total_cost_paisa / 100).toFixed(2),
+          e.source_doc_type,
+          e.reference_code ?? "",
+          e.actor_name,
+          e.notes ?? "",
+        ]
+          .map(esc)
+          .join(",")
+      ),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "inventory-ledger.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <DesktopAdminLayout
       title="Immutable Inventory Ledger"
       subtitle="Chronological, append-only ledger tracking every stock-changing transaction with source traceability"
+      actions={
+        <Button variant="outline" onClick={exportLedgerCsv} disabled={entries.length === 0}>
+          <Download className="h-4 w-4" />
+          Export CSV
+        </Button>
+      }
     >
       <div className="space-y-6">
         <Card>

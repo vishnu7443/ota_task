@@ -21,6 +21,7 @@ import {
   Scale,
   ShieldCheck,
   TrendingUp,
+  Store,
   Truck,
   UserCog,
   Users,
@@ -109,6 +110,7 @@ export function DesktopAdminLayout({
                   <nav className="space-y-1">
                     <SidebarLink to="/admin" end icon={LayoutDashboard} label="Dashboard" />
                     <SidebarLink to="/admin/orders" icon={ClipboardCheck} label="Incoming Orders" />
+                    <SidebarLink to="/admin/catalog" icon={Store} label="Customers & Pricing" />
                   </nav>
                 </div>
 

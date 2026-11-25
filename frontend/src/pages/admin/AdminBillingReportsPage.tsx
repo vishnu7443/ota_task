@@ -81,6 +81,90 @@ export function AdminBillingReportsPage() {
           (h.total_tax_paisa / 100).toFixed(2),
         ])
       );
+    } else if (tab === "cn") {
+      downloadCsv(
+        "credit-notes-register.csv",
+        ["CN #", "Issue Date", "Original Invoice", "Customer", "Type", "Status", "Taxable Rev Rs", "CGST Rev Rs", "SGST Rev Rs", "IGST Rev Rs", "Total Rev Rs", "Reason"],
+        data.credit_notes.map((c) => [
+          c.cn_number ?? c.draft_ref,
+          c.issue_date,
+          c.original_invoice_number ?? "",
+          c.customer_name,
+          c.note_type,
+          c.status,
+          (c.taxable_reversed_paisa / 100).toFixed(2),
+          (c.cgst_reversed_paisa / 100).toFixed(2),
+          (c.sgst_reversed_paisa / 100).toFixed(2),
+          (c.igst_reversed_paisa / 100).toFixed(2),
+          (c.total_reversed_paisa / 100).toFixed(2),
+          c.reason,
+        ])
+      );
+    } else if (tab === "dispatch") {
+      downloadCsv(
+        "dispatch-register.csv",
+        ["Dispatch #", "Date", "Invoice #", "Order #", "Customer", "Status", "Transporter", "Vehicle", "Dispatched Pkts", "Received Pkts", "Delivery Date"],
+        data.dispatch_register.map((d) => [
+          d.dispatch_number,
+          d.dispatch_date,
+          d.invoice_number,
+          d.order_number,
+          d.customer_name,
+          d.status,
+          d.transporter_name ?? "",
+          d.vehicle_number ?? "",
+          d.total_dispatched_pkts,
+          d.total_received_pkts,
+          d.delivery_date ?? "",
+        ])
+      );
+    } else if (tab === "customer") {
+      downloadCsv(
+        "customer-wise-sales.csv",
+        ["Customer", "Type", "State", "GSTIN", "Invoices", "Total Pkts", "Taxable Rs", "GST Rs", "Grand Total Rs", "Credited Rs", "Outstanding Rs"],
+        data.customer_sales.map((c) => [
+          c.customer_name,
+          c.customer_type,
+          c.state_code,
+          c.buyer_gstin ?? "",
+          c.invoice_count,
+          c.total_qty_pkts,
+          (c.taxable_paisa / 100).toFixed(2),
+          (c.gst_paisa / 100).toFixed(2),
+          (c.grand_total_paisa / 100).toFixed(2),
+          (c.credited_paisa / 100).toFixed(2),
+          (c.outstanding_paisa / 100).toFixed(2),
+        ])
+      );
+    } else if (tab === "product") {
+      downloadCsv(
+        "product-wise-sales.csv",
+        ["SKU", "Description", "HSN", "Qty Pkts", "Taxable Rs", "CGST Rs", "SGST Rs", "IGST Rs", "Line Total Rs"],
+        data.product_sales.map((p) => [
+          p.sku_code,
+          p.description,
+          p.hsn_code,
+          p.total_qty_pkts,
+          (p.taxable_paisa / 100).toFixed(2),
+          (p.cgst_paisa / 100).toFixed(2),
+          (p.sgst_paisa / 100).toFixed(2),
+          (p.igst_paisa / 100).toFixed(2),
+          (p.line_total_paisa / 100).toFixed(2),
+        ])
+      );
+    } else if (tab === "outstanding") {
+      downloadCsv(
+        "outstanding-invoices.csv",
+        ["Invoice", "Date", "Customer", "Status", "Grand Total Rs", "Outstanding Rs"],
+        data.outstanding_invoices.map((r) => [
+          r.invoice_number,
+          r.invoice_date,
+          r.customer_name,
+          r.doc_status,
+          (r.grand_total_paisa / 100).toFixed(2),
+          (r.outstanding_paisa / 100).toFixed(2),
+        ])
+      );
     }
   };
 

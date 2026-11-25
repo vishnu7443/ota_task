@@ -17,6 +17,7 @@ import { AdminIncomingOrdersPage } from "@/pages/admin/AdminIncomingOrdersPage";
 import { AdminIntelligenceDashboardPage } from "@/pages/admin/AdminIntelligenceDashboardPage";
 import { AdminInventoryDashboardPage } from "@/pages/admin/AdminInventoryDashboardPage";
 import { AdminInventoryLedgerPage } from "@/pages/admin/AdminInventoryLedgerPage";
+import { AdminCatalogPage } from "@/pages/admin/AdminCatalogPage";
 import { AdminInvoiceDetailPage } from "@/pages/admin/AdminInvoiceDetailPage";
 import { AdminOrderDetailPage } from "@/pages/admin/AdminOrderDetailPage";
 import { AdminPaymentsPage } from "@/pages/admin/AdminPaymentsPage";
@@ -39,6 +40,7 @@ import { SalesmanOrdersPage } from "@/pages/salesman/SalesmanOrdersPage";
 function homeForRole(roleCode: string): string {
   if (roleCode === "SALESMAN") return "/salesman";
   if (roleCode === "PRODUCTION_SUPERVISOR") return "/admin/inventory";
+  if (roleCode === "OWNER") return "/admin/intelligence";
   return "/admin";
 }
 
@@ -149,6 +151,14 @@ export function App() {
         element={
           <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
             <AdminOrderDetailPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin/catalog"
+        element={
+          <RequireRole allowedRoles={["FACTORY_ADMIN", "OWNER", "ACCOUNTANT_AUDITOR"]}>
+            <AdminCatalogPage />
           </RequireRole>
         }
       />

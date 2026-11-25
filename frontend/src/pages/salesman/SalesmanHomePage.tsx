@@ -105,11 +105,22 @@ export function SalesmanHomePage() {
                               {c.primary_state_name} ({c.primary_state_code})
                             </span>
                           </div>
-                          {ar && (ar.total_outstanding_paisa > 0 || ar.advance_balance_paisa > 0) && (
-                            <div className="flex flex-wrap items-center gap-2 pt-0.5 text-[11px] tabular-nums">
+                          {ar &&
+                            (ar.total_invoiced_paisa > 0 ||
+                              ar.total_outstanding_paisa > 0 ||
+                              ar.advance_balance_paisa > 0) && (
+                            <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[11px] tabular-nums">
+                              <span className="rounded bg-secondary px-1.5 py-0.5 font-semibold text-foreground">
+                                Billed: {formatInrFromPaisa(ar.total_invoiced_paisa)}
+                              </span>
+                              {ar.total_paid_paisa > 0 && (
+                                <span className="rounded bg-emerald-100 px-1.5 py-0.5 font-semibold text-emerald-900">
+                                  Paid: {formatInrFromPaisa(ar.total_paid_paisa)}
+                                </span>
+                              )}
                               {ar.total_outstanding_paisa > 0 && (
                                 <span className="rounded bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-900">
-                                  AR Due: {formatInrFromPaisa(ar.total_outstanding_paisa)}
+                                  Due: {formatInrFromPaisa(ar.total_outstanding_paisa)}
                                 </span>
                               )}
                               {ar.advance_balance_paisa > 0 && (

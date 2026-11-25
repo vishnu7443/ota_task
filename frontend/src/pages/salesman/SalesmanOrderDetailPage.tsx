@@ -9,6 +9,8 @@ import {
   Clock,
   Download,
   Edit3,
+  Mail,
+  MessageCircle,
   MessageSquare,
   PlusCircle,
   RefreshCw,
@@ -276,28 +278,56 @@ export function SalesmanOrderDetailPage() {
                     </div>
                   </div>
                   {order.invoice_doc_status === "ISSUED" && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      onClick={async () => {
-                        try {
-                          const blob = await api.fetchInvoicePdfBlob(order.invoice_id!);
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement("a");
-                          a.href = url;
-                          a.download = `${(order.invoice_number ?? `INV-${order.invoice_id}`).replaceAll("/", "-")}.pdf`;
-                          a.click();
-                          URL.revokeObjectURL(url);
-                        } catch {
-                          setActionError("Unable to download Invoice PDF right now.");
-                        }
-                      }}
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      Download GST Invoice PDF
-                    </Button>
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={async () => {
+                          try {
+                            const blob = await api.fetchInvoicePdfBlob(order.invoice_id!);
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `${(order.invoice_number ?? `INV-${order.invoice_id}`).replaceAll("/", "-")}.pdf`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          } catch {
+                            setActionError("Unable to download Invoice PDF right now.");
+                          }
+                        }}
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Download GST Invoice PDF
+                      </Button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button asChild size="sm" variant="outline">
+                          <a
+                            href={`https://wa.me/?text=${encodeURIComponent(
+                              `GST Invoice ${order.invoice_number} for ${order.customer_name} (Order ${order.order_number}): Total ${formatInrFromPaisa(order.invoice_grand_total_paisa ?? 0)}, Balance ${formatInrFromPaisa(order.invoice_outstanding_paisa ?? 0)}.`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                            WhatsApp
+                          </a>
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                          <a
+                            href={`mailto:?subject=${encodeURIComponent(
+                              `GST Invoice ${order.invoice_number} - Kaveri Traditional Snacks`
+                            )}&body=${encodeURIComponent(
+                              `GST Invoice ${order.invoice_number} for ${order.customer_name} (Order ${order.order_number}): Total ${formatInrFromPaisa(order.invoice_grand_total_paisa ?? 0)}, Balance ${formatInrFromPaisa(order.invoice_outstanding_paisa ?? 0)}.`
+                            )}`}
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                            Email
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}

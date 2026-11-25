@@ -47,3 +47,23 @@ class SalesmanOption(BaseModel):
     full_name: str
     employee_code: str
     territory: str | None = None
+
+
+class CustomerCreateRequest(BaseModel):
+    code: str
+    name: str
+    customer_type: str  # RETAILER | DISTRIBUTOR
+    gstin: str | None = None
+    primary_state_name: str
+    primary_state_code: str
+    phone: str | None = None
+    assigned_salesman_id: int | None = None
+    credit_days: int = 30
+    address_line1: str
+    city: str
+    pincode: str
+
+
+class PackSizePriceUpdateRequest(BaseModel):
+    unit_price_paisa: int
+    reason: str

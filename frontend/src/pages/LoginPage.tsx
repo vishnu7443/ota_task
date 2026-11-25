@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth-context";
 function routeForRole(roleCode: string): string {
   if (roleCode === "SALESMAN") return "/salesman";
   if (roleCode === "PRODUCTION_SUPERVISOR") return "/admin/inventory";
+  if (roleCode === "OWNER") return "/admin/intelligence";
   return "/admin";
 }
 

@@ -289,12 +289,49 @@ export function AdminPaymentsPage() {
   const openInvs = openInvRecordQuery.data ?? [];
   const pmtData = paymentsQuery.data;
 
+  const handleExportPaymentsCsv = () => {
+    const list = pmtData?.items ?? [];
+    if (list.length === 0) return;
+    const esc = (v: string | number) => `"${String(v).replaceAll('"', '""')}"`;
+    const rows = [
+      ["Receipt #", "Date", "Customer Code", "Customer Name", "Mode", "Reference", "Status", "Amount Rs", "Allocated Rs", "Refunded Rs", "Unallocated Rs"].map(esc).join(","),
+      ...list.map((p) =>
+        [
+          p.payment_number,
+          p.payment_date,
+          p.customer_code,
+          p.customer_name,
+          p.payment_mode,
+          p.reference_no ?? "",
+          p.status,
+          (p.amount_paisa / 100).toFixed(2),
+          (p.allocated_paisa / 100).toFixed(2),
+          (p.refunded_paisa / 100).toFixed(2),
+          (p.unallocated_paisa / 100).toFixed(2),
+        ]
+          .map(esc)
+          .join(",")
+      ),
+    ];
+    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "customer-payments-register.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <DesktopAdminLayout
       title="Customer Payments & Invoice Allocations"
       subtitle="Record cash/UPI/NEFT/cheque receipts, allocate across single or multiple invoices, hold advances, and print receipts"
       actions={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={handleExportPaymentsCsv} disabled={!pmtData?.items.length}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
           <Button variant="outline" asChild>
             <Link to="/admin/finance/receivables">AR &amp; Ageing →</Link>
           </Button>

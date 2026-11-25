@@ -8,6 +8,8 @@ import {
   Eye,
   FileClock,
   FileWarning,
+  Mail,
+  MessageCircle,
   ShieldCheck,
   Truck,
 } from "lucide-react";
@@ -154,6 +156,9 @@ export function AdminInvoiceDetailPage() {
   };
 
   const inv = invQuery.data;
+  const shareSummaryText = inv
+    ? `GST Tax Invoice ${inv.invoice_number ?? inv.draft_ref} (${formatOrderDate(inv.invoice_date)}) from ${inv.seller_legal_name} for ${inv.customer_name}. Order: ${inv.order_number}. Grand Total: ${formatInrFromPaisa(inv.grand_total_paisa)}. Balance Due: ${formatInrFromPaisa(inv.outstanding_paisa)}.`
+    : "";
 
   return (
     <DesktopAdminLayout
@@ -181,6 +186,30 @@ export function AdminInvoiceDetailPage() {
                 <Download className="h-4 w-4" />
                 Download PDF
               </Button>
+              {inv.doc_status === "ISSUED" && (
+                <>
+                  <Button variant="outline" asChild>
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent(shareSummaryText)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      WhatsApp Share
+                    </a>
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <a
+                      href={`mailto:?subject=${encodeURIComponent(
+                        `GST Invoice ${inv.invoice_number ?? inv.draft_ref} - ${inv.seller_legal_name}`
+                      )}&body=${encodeURIComponent(shareSummaryText)}`}
+                    >
+                      <Mail className="h-4 w-4" />
+                      Email
+                    </a>
+                  </Button>
+                </>
+              )}
             </>
           )}
           {inv?.doc_status === "ISSUED" && inv.outstanding_paisa > 0 && canOperate && (
