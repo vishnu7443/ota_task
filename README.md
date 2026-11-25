@@ -6,25 +6,22 @@ All company, customer, product, and transaction records are strictly fictional b
 
 ---
 
-## Current Status: Phase 5 — Complete Sales Order Lifecycle & Admin Verification
+## Current Status: Phase 6 — Purchasing & Inventory Management
 
-Implemented and verified across Phases 4 and 5:
-- **Monorepo & Modular Monolith Architecture:** Backend modules (`iam`, `sales`, `orders`, `inventory`, `audit`) cleanly split across routers, schemas, state machine, services, repositories, and SQLAlchemy models; paired with mobile-first Salesman (`375px`) and desktop-first Factory Admin (`1280px`) React interfaces.
-- **PostgreSQL 16 Schema, Constraints & Triggers (`0001` & `0002`):**
-  - Integer-paisa financial columns, `GENERATED ALWAYS AS` computed taxable & available-stock columns, `ON DELETE RESTRICT` foreign keys, append-only ledger/audit triggers (`fn_prevent_mutation()`), ledger-to-balance trigger (`fn_sync_balance_from_movement()`), no-op transition guard (`from_status IS DISTINCT FROM to_status`), and per-item `inventory.stock_reservations`.
-- **Explicit Order Lifecycle & Concurrency Controls:**
-  - Enforced transitions across `SUBMITTED`, `UNDER_REVIEW`, `CORRECTION_REQUESTED`, `APPROVED`, `REJECTED`, and `CANCELLED` using row-level `SELECT ... FOR UPDATE` locks and `version` checks.
-  - Atomic stock reservation upon `APPROVED` (`available = on_hand - reserved`) without deducting physical warehouse stock until future Dispatch; pre-invoice cancellation releases reservations cleanly.
-  - Non-blocking read-only stock warnings on mobile submission; blocking `409 INSUFFICIENT_STOCK` protection against negative stock or concurrent overselling on Admin approval.
-- **Factory Admin Verification Desk:**
-  - Dashboard KPI summary (`GET /api/v1/admin/orders/summary`), lifecycle tabs (`Pending Verification`, `Incoming`, `Approved`, `Rejected`, `All`), multi-criteria search/filters (order #, customer, salesman, date range, status, shortage), pagination, and 10s polling.
-  - Interactive verification workbench to inspect customer/salesman/stock breakdown, adjust quantities & authorized unit prices with mandatory audit reasons (preserving immutable originals), mark Under Review, request Salesman correction, Approve & Reserve, Reject, or Cancel pre-invoice.
-- **Salesman Mobile Experience & Synchronization:**
-  - Sub-minute customer -> SKU -> carton/packet cart submission with `client_order_id` idempotency.
-  - My Orders tracking (`All`, `Submitted`, `Under Review`, `Correction`, `Approved`, `Rejected`, `Cancelled`) and rich Order Details displaying Admin remarks, rejection/cancellation reasons, original vs approved quantities, status timeline, 10s polling sync, inline correction resubmission (`PUT /orders/{id}`), and pre-approval cancellation.
-- **Immutable Audit Trail:** Every order submission, quantity/price override, status transition, remark, stock reservation, reservation release, and RBAC denial is recorded with actor, role, timestamp, reason, and before/after JSON snapshots.
+Implemented and verified across Phases 4, 5, and 6:
+- **Modular Monolith Backend & Role-Scoped UI:** Backend modules (`iam`, `sales`, `orders`, `purchasing`, `inventory`, `audit`) cleanly layered across FastAPI routers, Pydantic schemas, state guards, services, repositories, and SQLAlchemy 2.0 models, paired with mobile-first Salesman (`375px`) and desktop-first Factory Control Desk (`1280px`) interfaces.
+- **PostgreSQL 16 Schema, Constraints & Triggers (`0001`, `0002`, `0003`):**
+  - Integer-paisa financial columns, `NUMERIC(18,3)` canonical base quantities (`g`, `ml`, `piece`, `packet`), `NUMERIC(18,6)` sub-paisa FIFO unit costs, `GENERATED ALWAYS AS` available-stock columns, `ON DELETE RESTRICT` foreign keys, append-only ledger/audit triggers (`fn_prevent_mutation()`), and atomic movement-to-balance trigger (`fn_sync_balance_from_movement()`).
+- **Sales Order Management & Stock Reservation (Phases 4–5):**
+  - Enforced lifecycle across `SUBMITTED`, `UNDER_REVIEW`, `CORRECTION_REQUESTED`, `APPROVED`, `REJECTED`, and `CANCELLED` with row-level `FOR UPDATE` locks and `version` checks.
+  - Atomic stock reservation upon `APPROVED` (`available = on_hand - reserved`) protecting sales commitments against concurrent overselling or negative stock adjustments.
+- **Purchasing, Goods Receipts & Immutable Stock Ledger (Phase 6):**
+  - **Suppliers (`purchasing.suppliers`):** CRUD, GSTIN/state-code validation, active toggle, and chronological PO/GRN purchase history.
+  - **Purchase Orders (`purchasing.purchase_orders`):** Multi-line Raw Material & Packaging POs across dimension-compatible units with GST/subtotal calculation; strict rule that POs do not mutate inventory before posting.
+  - **Goods Receipts (`purchasing.purchase_receipts`):** Approved/Partial PO fulfillment tracking, `client_receipt_id` idempotency, Received vs Damaged/Rejected split, excess-receipt guard, and `DRAFT -> SUBMITTED -> VERIFIED -> POSTED` workflow writing `PURCHASE_IN` movements and FIFO `CostLot` layers.
+  - **Inventory & Adjustments (`inventory.*`):** Unified Stock Dashboard (`Opening`, `Received`, `Issued`, `Dispatched`, `Adjusted`, `Physical`, `Reserved`, `Available`, Low-Stock Alerts), chronological Ledger viewer, dual-control Stock Adjustments (Supervisor requests `PENDING_APPROVAL`, Admin approves/posts with negative-stock & sales-reservation protection), and CSV-exportable Stock Reports.
 
-> **Scope Boundary (Stop After Phase 5):** GST Tax Invoices, Dispatches (physical FG deduction), Customer Payments/Receivables, Production Runs, BOMs, and Costing are intentionally excluded until the next phase.
+> **Scope Boundary (Stop After Phase 6):** Production Runs, BOM Consumption Execution, GST Tax Invoices, Dispatches (physical FG deduction), Customer Payments/Receivables, and Costing remain deferred cleanly until the next phases.
 
 ---
 
@@ -43,21 +40,23 @@ Implemented and verified across Phases 4 and 5:
 │   ├── phase2/                        # Domain modelling & architecture (14 docs)
 │   ├── phase3/                        # PostgreSQL schema & security engineering (12 docs)
 │   ├── phase4/                        # Phase 4 implementation & testing docs (9 docs)
-│   └── phase5/                        # Phase 5 lifecycle, verification & audit docs (9 docs)
+│   ├── phase5/                        # Phase 5 lifecycle, verification & audit docs (9 docs)
+│   └── phase6/                        # Phase 6 purchasing & inventory docs (12 docs)
 ├── backend/
-│   ├── alembic/                       # 0001_phase4_foundation -> 0002_phase5_order_lifecycle
+│   ├── alembic/                       # 0001 -> 0002 -> 0003_phase6_purchasing_inv
 │   ├── app/
 │   │   ├── core/                      # Config, PostgreSQL session, exceptions, logging, security
 │   │   ├── modules/
 │   │   │   ├── iam/                   # Roles, users, login/me endpoints, RBAC guards
 │   │   │   ├── sales/                 # Salesmen, customers, products, pack sizes, price lists
 │   │   │   ├── orders/                # State machine, submission, verification, audit queries
-│   │   │   ├── inventory/             # Opening balance ledger, balances & stock_reservations
+│   │   │   ├── purchasing/            # Suppliers, Purchase Orders, Goods Receipts & QC posting
+│   │   │   ├── inventory/             # Materials, UOMs, CostLots, Ledger, Adjustments & Reports
 │   │   │   └── audit/                 # Append-only audit log service
 │   │   └── seeds/
-│   │       ├── benchmark_seed.py      # Official Section 5 master & 50-pkt opening FG seed
+│   │       ├── benchmark_seed.py      # Official Section 5 master, RM/Pkg/FG opening stock & SUP-001
 │   │       └── dev_fixtures.py        # Optional separate controlled dev stock fixture helper
-│   └── tests/                         # 24 automated Pytest tests against isolated ota_test DB
+│   └── tests/                         # 33 automated Pytest tests against isolated ota_test DB
 └── frontend/
     └── src/
         ├── lib/                       # API client, money formatter, auth context
@@ -118,7 +117,7 @@ npm run dev
 
 ## Verification & Automated Tests
 
-**Backend Lint & Pytest (24 tests executed against isolated `ota_test`, never mutating `ota_dev`):**
+**Backend Lint & Pytest (33 tests executed against isolated `ota_test`, never mutating `ota_dev`):**
 
 ```bash
 cd backend
@@ -142,23 +141,27 @@ npm run build
 | --- | --- | --- | --- |
 | `salesman_a` | `SALESMAN` | `SalesA@2026!` | Mobile Salesman (`/salesman`) — assigned `Retailer A` |
 | `salesman_b` | `SALESMAN` | `SalesB@2026!` | Mobile Salesman (`/salesman`) — assigned `Distributor B` |
-| `admin` | `FACTORY_ADMIN` | `Admin@2026!` | Desktop Admin (`/admin`) — full order verification controls |
-| `supervisor` | `PRODUCTION_SUPERVISOR` | `Prod@2026!` | Floor scope (Phase 6 production; blocked `403` on orders) |
-| `auditor` | `ACCOUNTANT_AUDITOR` | `Audit@2026!` | Desktop read-only oversight + Audit Trail view |
-| `owner` | `OWNER` | `Owner@2026!` | Desktop read-only oversight + Audit Trail view |
+| `admin` | `FACTORY_ADMIN` | `Admin@2026!` | Desktop Control Desk (`/admin`) — Sales, Purchasing & Inventory |
+| `supervisor` | `PRODUCTION_SUPERVISOR` | `Prod@2026!` | Inventory & Purchasing (`/admin/inventory`, blocked `403` on Sales Orders) |
+| `auditor` | `ACCOUNTANT_AUDITOR` | `Audit@2026!` | Desktop read-only oversight, Ledger, Reports & Audit Trail |
+| `owner` | `OWNER` | `Owner@2026!` | Desktop read-only executive oversight, Reports & Audit Trail |
 
 ---
 
 ## Detailed Documentation
 
 - **Phase 4 Foundation Docs:** [docs/phase4/](file:///d:/mac/ota/docs/phase4)
-- **Phase 5 Order Management Docs:**
-  - [order-management-overview.md](file:///d:/mac/ota/docs/phase5/order-management-overview.md)
-  - [order-state-transitions.md](file:///d:/mac/ota/docs/phase5/order-state-transitions.md)
-  - [admin-verification-workflow.md](file:///d:/mac/ota/docs/phase5/admin-verification-workflow.md)
-  - [stock-availability-design.md](file:///d:/mac/ota/docs/phase5/stock-availability-design.md)
-  - [salesman-order-tracking.md](file:///d:/mac/ota/docs/phase5/salesman-order-tracking.md)
-  - [audit-trail-implementation.md](file:///d:/mac/ota/docs/phase5/audit-trail-implementation.md)
-  - [api-documentation.md](file:///d:/mac/ota/docs/phase5/api-documentation.md)
-  - [testing-report.md](file:///d:/mac/ota/docs/phase5/testing-report.md)
-  - [known-limitations.md](file:///d:/mac/ota/docs/phase5/known-limitations.md)
+- **Phase 5 Order Management Docs:** [docs/phase5/](file:///d:/mac/ota/docs/phase5)
+- **Phase 6 Purchasing & Inventory Docs:**
+  - [supplier-management.md](file:///d:/mac/ota/docs/phase6/supplier-management.md)
+  - [purchase-workflow.md](file:///d:/mac/ota/docs/phase6/purchase-workflow.md)
+  - [goods-receipt-workflow.md](file:///d:/mac/ota/docs/phase6/goods-receipt-workflow.md)
+  - [inventory-ledger.md](file:///d:/mac/ota/docs/phase6/inventory-ledger.md)
+  - [stock-balance-management.md](file:///d:/mac/ota/docs/phase6/stock-balance-management.md)
+  - [unit-management.md](file:///d:/mac/ota/docs/phase6/unit-management.md)
+  - [stock-adjustments.md](file:///d:/mac/ota/docs/phase6/stock-adjustments.md)
+  - [inventory-dashboard.md](file:///d:/mac/ota/docs/phase6/inventory-dashboard.md)
+  - [api-documentation.md](file:///d:/mac/ota/docs/phase6/api-documentation.md)
+  - [testing-report.md](file:///d:/mac/ota/docs/phase6/testing-report.md)
+  - [benchmark-validation.md](file:///d:/mac/ota/docs/phase6/benchmark-validation.md)
+  - [known-limitations.md](file:///d:/mac/ota/docs/phase6/known-limitations.md)
