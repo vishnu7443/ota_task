@@ -10,16 +10,24 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import check_db_health, get_db
 from app.core.exceptions import register_exception_handlers
-from app.core.logging import configure_logging
+from app.core.logging import (
+    configure_logging,
+    reset_request_correlation_id,
+    set_request_correlation_id,
+)
 from app.modules.audit import models as _audit_models  # noqa: F401
+from app.modules.audit.router import router as audit_router
 from app.modules.billing.router import router as billing_router
 from app.modules.costing.router import router as costing_router
 from app.modules.finance.router import router as finance_router
 from app.modules.iam.router import router as auth_router
+from app.modules.iam.router import users_router as iam_users_router
+from app.modules.intelligence.router import router as intelligence_router
 from app.modules.inventory.router import router as inventory_router
 from app.modules.orders.router import admin_orders_router, salesman_orders_router
 from app.modules.production.router import router as production_router
 from app.modules.purchasing.router import router as purchasing_router
+from app.modules.reconciliation.router import router as reconciliation_router
 from app.modules.sales.router import router as sales_router
 
 settings = get_settings()
@@ -47,9 +55,13 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def request_logging_middleware(request: Request, call_next):
-        request_id = str(uuid.uuid4())[:8]
+        request_id = f"REQ-{str(uuid.uuid4())[:8]}"
+        token = set_request_correlation_id(request_id)
         start = time.perf_counter()
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        finally:
+            reset_request_correlation_id(token)
         duration_ms = round((time.perf_counter() - start) * 1000, 2)
         logger.info(
             "HTTP %s %s -> %s (%.2fms)",
@@ -77,6 +89,7 @@ def create_app() -> FastAPI:
         }
 
     app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
+    app.include_router(iam_users_router, prefix=settings.API_V1_PREFIX)
     app.include_router(sales_router, prefix=settings.API_V1_PREFIX)
     app.include_router(salesman_orders_router, prefix=settings.API_V1_PREFIX)
     app.include_router(admin_orders_router, prefix=settings.API_V1_PREFIX)
@@ -86,6 +99,9 @@ def create_app() -> FastAPI:
     app.include_router(billing_router, prefix=settings.API_V1_PREFIX)
     app.include_router(finance_router, prefix=settings.API_V1_PREFIX)
     app.include_router(costing_router, prefix=settings.API_V1_PREFIX)
+    app.include_router(audit_router, prefix=settings.API_V1_PREFIX)
+    app.include_router(reconciliation_router, prefix=settings.API_V1_PREFIX)
+    app.include_router(intelligence_router, prefix=settings.API_V1_PREFIX)
 
     return app
 

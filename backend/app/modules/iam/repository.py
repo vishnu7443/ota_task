@@ -13,6 +13,11 @@ def get_user_by_username(db: Session, username: str) -> User | None:
     return db.execute(stmt).scalar_one_or_none()
 
 
+def get_user_by_id(db: Session, user_id: int) -> User | None:
+    stmt = select(User).options(joinedload(User.role)).where(User.id == user_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
 def get_active_user_by_id(db: Session, user_id: int) -> User | None:
     stmt = (
         select(User)
@@ -24,6 +29,18 @@ def get_active_user_by_id(db: Session, user_id: int) -> User | None:
 
 def get_role_by_code(db: Session, code: str) -> Role | None:
     return db.execute(select(Role).where(Role.code == code)).scalar_one_or_none()
+
+
+def list_roles(db: Session) -> list[Role]:
+    return list(db.execute(select(Role).order_by(Role.id.asc())).scalars().all())
+
+
+def list_users(db: Session) -> list[User]:
+    return list(
+        db.execute(select(User).options(joinedload(User.role)).order_by(User.id.asc()))
+        .scalars()
+        .all()
+    )
 
 
 def get_company_profile(db: Session) -> CompanyProfile | None:

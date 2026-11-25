@@ -31,7 +31,7 @@ class FiscalSequence(Base):
     __tablename__ = "fiscal_sequences"
     __table_args__ = (
         CheckConstraint(
-            "doc_type IN ('INVOICE', 'CREDIT_NOTE', 'DISPATCH', 'PAYMENT', 'REFUND')",
+            "doc_type IN ('INVOICE', 'CREDIT_NOTE', 'DISPATCH', 'PAYMENT', 'REFUND', 'RECONCILIATION')",
             name="fs_doc_type_enum",
         ),
         CheckConstraint(
