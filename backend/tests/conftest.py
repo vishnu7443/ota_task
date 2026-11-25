@@ -46,6 +46,12 @@ def db_session() -> Generator[Session, None, None]:
                 TRUNCATE TABLE
                     audit.variance_alerts,
                     audit.audit_logs,
+                    costing.production_cost_summaries,
+                    costing.production_overheads,
+                    finance.customer_receivables,
+                    finance.payment_refunds,
+                    finance.payment_allocations,
+                    finance.payments,
                     inventory.cost_lot_consumptions,
                     inventory.stock_reservations,
                     inventory.cost_lots,
