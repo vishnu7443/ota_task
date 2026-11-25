@@ -941,8 +941,24 @@ export interface StockReportsSummary {
   adjustments: StockAdjustment[];
 }
 
-const API_BASE =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) || "/api/v1";
+function resolveApiBase(raw?: string): string {
+  const trimmed = (raw ?? "").trim().replace(/\/+$/, "");
+  if (!trimmed) return "/api/v1";
+  if (trimmed.endsWith("/api/v1")) return trimmed;
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.pathname === "/" || parsed.pathname === "") {
+        return `${trimmed}/api/v1`;
+      }
+    } catch {
+      return trimmed;
+    }
+  }
+  return trimmed;
+}
+
+const API_BASE = resolveApiBase(import.meta.env.VITE_API_BASE_URL as string | undefined);
 
 const TOKEN_STORAGE_KEY = "ota_access_token";
 
