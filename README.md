@@ -6,41 +6,27 @@ All company, customer, product, and transaction records are strictly fictional b
 
 ---
 
-## Current Status: Phase 10 — Audit, Reconciliation & Management Intelligence
+## Current Status: Phase 11 — Final System Integration, Benchmark Validation, QA & Submission Ready
 
-Implemented and verified across Phases 4, 5, 6, 7, 8, 9, and 10:
-- **Modular Monolith Backend & Role-Scoped UI:** Backend modules (`iam`, `sales`, `orders`, `purchasing`, `inventory`, `production`, `billing`, `finance`, `costing`, `audit`, `reconciliation`, `intelligence`) cleanly layered across FastAPI routers, Pydantic schemas, state guards, services, repositories, and SQLAlchemy 2.0 models, paired with mobile-first Salesman (`375px`) and desktop-first Factory Control Desk (`1280px`) interfaces.
+Implemented and verified across Phases 4 through 11:
+- **Modular Monolith Backend & Role-Scoped UI:** Backend modules (`iam`, `sales`, `orders`, `purchasing`, `inventory`, `production`, `billing`, `finance`, `costing`, `audit`, `reconciliation`, `intelligence`) layered across FastAPI routers, Pydantic schemas, state guards, services, repositories, and SQLAlchemy 2.0 models inside one ACID PostgreSQL 16 database, paired with mobile-first Salesman (`375px`) and desktop-first Factory Control Desk (`1280px`) interfaces.
 - **PostgreSQL 16 Schema, Constraints & Triggers (`0001`–`0007`):**
-  - Integer-paisa financial columns, `NUMERIC(18,3)` canonical base quantities (`g`, `ml`, `piece`, `packet`), `NUMERIC(18,6)` sub-paisa FIFO/FEFO unit costs, `GENERATED ALWAYS AS` available-stock, invoice/credit-note total, payment unallocated-balance, and receivable outstanding-balance columns, `ON DELETE RESTRICT` foreign keys, append-only ledger/audit/dispatch-history/refund/reconciliation-event triggers (`fn_prevent_mutation()`), immutable BOM/invoice/payment/allocation/cost-summary/closed-reconciliation triggers, over-dispatch & over-allocation DB guards, and atomic movement-to-balance trigger (`fn_sync_balance_from_movement()`).
-- **Sales Order Management & Stock Reservation (Phases 4–5):**
-  - Enforced lifecycle across `SUBMITTED`, `UNDER_REVIEW`, `CORRECTION_REQUESTED`, `APPROVED`, `INVOICED`, `PARTIALLY_DISPATCHED`, `DISPATCHED`, `REJECTED`, and `CANCELLED` with row-level `FOR UPDATE` locks and `version` checks.
-  - Atomic stock reservation upon `APPROVED` (`available = on_hand - reserved`) protecting sales commitments against concurrent overselling or negative stock adjustments.
+  - Integer-paisa (`BigInteger`) financial columns, `NUMERIC(18,3)` canonical base quantities (`g`, `ml`, `piece`, `packet`), `NUMERIC(18,6)` sub-paisa FIFO/FEFO unit costs, `GENERATED ALWAYS AS` available-stock, invoice/credit-note total, payment unallocated-balance, and receivable outstanding-balance columns, `ON DELETE RESTRICT` foreign keys, append-only ledger/audit/dispatch-history/refund/reconciliation-event triggers (`fn_prevent_mutation()`), immutable BOM/invoice/payment/allocation/cost-summary/closed-reconciliation triggers, over-dispatch & over-allocation DB guards, and atomic movement-to-balance trigger (`fn_sync_balance_from_movement()`).
+- **Sales Order Management & Customer/Pricing Master (Phases 4–5, 11):**
+  - Enforced lifecycle across `SUBMITTED`, `UNDER_REVIEW`, `CORRECTION_REQUESTED`, `APPROVED`, `INVOICED`, `PARTIALLY_DISPATCHED`, `DISPATCHED`, `REJECTED`, and `CANCELLED` with row-level `FOR UPDATE` locks and `version` checks, plus atomic FG reservation upon approval.
+  - Audited Customer Master creation (`POST /api/v1/sales/customers` with GSTIN/state validation + BILLING/SHIPPING addresses), active SKU selling price updates (`PATCH /api/v1/sales/products/{pack_size_id}/price` preserving historical invoices), Salesman mobile customer `Billed / Paid / Due` cards, and WhatsApp/Email invoice sharing.
 - **Purchasing, Goods Receipts & Immutable Stock Ledger (Phase 6):**
-  - **Suppliers (`purchasing.suppliers`):** CRUD, GSTIN/state-code validation, active toggle, and chronological PO/GRN purchase history.
-  - **Purchase Orders (`purchasing.purchase_orders`):** Multi-line Raw Material & Packaging POs across dimension-compatible units with GST/subtotal calculation; strict rule that POs do not mutate inventory before posting.
-  - **Goods Receipts (`purchasing.purchase_receipts`):** Approved/Partial PO fulfillment tracking, `client_receipt_id` idempotency, Received vs Damaged/Rejected split, excess-receipt guard, and `DRAFT -> SUBMITTED -> VERIFIED -> POSTED` workflow writing `PURCHASE_IN` movements and FIFO `CostLot` layers.
-  - **Inventory & Adjustments (`inventory.*`):** Unified Stock Dashboard (`Opening`, `Received`, `Issued`, `Dispatched`, `Adjusted`, `Physical`, `Reserved`, `Available`, Low-Stock Alerts), chronological Ledger viewer, dual-control Stock Adjustments (Supervisor requests `PENDING_APPROVAL`, Admin approves/posts with negative-stock & sales-reservation protection), and CSV-exportable Stock Reports.
-- **Bill of Materials, Production Execution, Atomic Posting & Variance Audit (Phase 7):**
-  - **Extensible Product/BOM Versioning (`production.recipe_templates`, `bom_headers`, `bom_versions`, `bom_components`):** Shared cooking recipe templates (`RCP-MRK-BASE`), multiple pack sizes per product (`MRK-200G`, `MRK-500G`), editable `DRAFT` BOM versions, atomic `ACTIVE -> SUPERSEDED` promotion, and trigger-enforced immutability of historical/active BOM versions.
-  - **BOM Scaling Calculator & Availability Engine:** Exact Decimal scaling by `batch_multiplier` or `target_output_pkts`, explicit metric conversions (`kg <-> g`, `L <-> ml`), ceiling rounding (`math.ceil`) for indivisible cartons/pouches with shortfall indicators against `available_qty_base`.
-  - **Controlled Production Lifecycle (`DRAFT -> PLANNED -> IN_PROGRESS -> COMPLETED -> POSTED` + `CANCELLED`):** Deterministic `BomVersion` pinning, double-issue prevention (`409 DOUBLE_MATERIAL_ISSUE`), FIFO `CostLot` issuance (`PROD_ISSUE_OUT` + `cost_lot_consumptions`), clean separation of `good_qty_pkts` vs `rejected_qty_pkts` vs `damaged_packaging_qty`, atomic posting (`PROD_OUTPUT_IN`, `PACKAGING_DAMAGE_OUT`, `PROD_RETURN_IN`), dual yield/raw/output-scaled variance computation (`BR-VAR-03`), `audit.variance_alerts`, and end-to-end ledger traceability.
-- **GST Billing, Invoicing, Credit Notes, Dispatch & Delivery Tracking (Phase 8):**
-  - **GST Calculation & Place-of-Supply Engine (`billing/gst_engine.py`):** Exact integer-paisa + `Decimal` `ROUND_HALF_UP` tax calculations splitting intra-state (`CGST + SGST`) vs inter-state (`IGST`) strictly from validated supplier/customer state codes & GSTIN prefixes, commercial rupee round-off, Indian amount-in-words, and historical `tax_calculation_snapshot` immutability.
-  - **Invoice Lifecycle & Statutory PDF (`billing/invoices`, `billing/pdf_generator.py`):** `DRAFT -> VERIFIED -> ISSUED` (`INV/YYYY-YY/NNNN` with April 1 Indian FY rollover), partial unique constraint blocking duplicate active invoices, trigger-locked issued tax rows, and deterministic single-page PDF 1.4 invoice export without deducting stock prior to dispatch.
-  - **Credit Notes (`billing/credit_notes`):** Pre-dispatch `INVOICE_CANCELLATION` (`CANCELLED_BY_CN`, releases active reservations & cancels order) and post-dispatch `SALES_RETURN` (`RESTOCK_SELLABLE` adds FG via `CREDIT_RETURN_IN` + `CostLot` vs `SCRAP_DAMAGED` financial reversal only).
-  - **Dispatch & Delivery Tracking (`billing/dispatches`):** Partial & full multi-trip dispatches (`CREATED -> READY_FOR_DISPATCH -> DISPATCHED -> IN_TRANSIT -> DELIVERED / DELIVERY_EXCEPTION`), over-dispatch guards (`409` + DB trigger), atomic FG FEFO `CostLot` depletion & `DISPATCH_OUT` ledger writes, line-level delivery discrepancy logging, Salesman own-order invoice PDF/delivery tracking, and Billing & GST Summary Reports.
-
-- **Payment Management, Accounts Receivable, Product Costing & Profitability (Phase 9):**
-  - **Customer Payments & Multi-Invoice Allocations (`finance.payments`, `finance.payment_allocations`, `finance.payment_refunds`):** Multi-mode receipts (`CASH`, `UPI`, `BANK_TRANSFER`, `NEFT`, `RTGS`, `IMPS`, `CHEQUE`, `CARD`, `OTHER`), UUID idempotency, duplicate reference guard, FY receipt numbers (`PMT/YYYY-YY/NNNN`) & `%PDF-1.4` receipt export, split invoice settlements (`UNPAID -> PARTIALLY_PAID -> PAID`), advance deposits (`is_advance`), unallocated advance refunds (`RFD/YYYY-YY/NNNN`), reversal workflows with audit history, and automatic Credit Note over-payment unwinding back to customer advances.
-  - **Accounts Receivable, Due-Date Ageing & Statements (`finance.customer_receivables`):** Real-time AR balance tracking (`original - credited - paid`), strict `due_date` vs `as_of_date` ageing across `NOT_DUE`, `0–30`, `31–60`, `61–90`, and `> 90` days, chronological Customer Statements, and Salesman own-customer AR visibility.
-  - **Production Costing & Overheads (`costing.production_overheads`, `costing.production_cost_summaries`):** Auto `v1 PRELIMINARY` batch costing upon production post from FIFO `CostLotConsumption` layers (`raw_material`, `good/damaged packaging`, `raw wastage`, `rejected output impact`), direct run overheads (`DIRECT_LABOUR`, `GAS_POWER`, etc.), largest-remainder monthly factory pool allocations by good packets, planned-vs-actual BOM unit cost variances, and immutable versioned snapshots (`v1 -> v2 -> ...`).
-  - **Gross Profitability Analytics (`/finance/profitability`):** Product, customer, order, and date profitability separating Net Revenue (excl. GST), GST Collected liability, Dispatched FEFO + Estimated Pending COGS, Gross Margin %, Cash Received, and Open AR, with explicit non-claim disclaimer for non-production opex / Net Profit.
+  - Suppliers CRUD, multi-UOM RM/Packaging POs (`POs never mutate stock before GRN posting`), GRNs (`PURCHASE_IN` + FIFO `CostLot` layers), unified Stock Dashboard, CSV-exportable Stock Ledger & Stock Reports, and dual-control Stock Adjustments.
+- **Bill of Materials, Production Execution & Variance Audit (Phase 7):**
+  - Shared recipe templates, multi-pack SKU extensibility (`MRK-200G`, `MRK-500G`), immutable BOM versions, Decimal scaling + ceiling carton rounding calculator, controlled production lifecycle (`DRAFT -> POSTED`), dual yield/consumption/output-scaled variances (`BR-VAR-03`), and `audit.variance_alerts`.
+- **GST Billing, Credit Notes & Dispatch Tracking (Phase 8):**
+  - Indian FY invoice numbering (`INV/YYYY-YY/NNNN`), verified Place-of-Supply GST (`CGST+SGST` vs `IGST`), deterministic single-page `%PDF-1.4` invoices, `INVOICE_CANCELLATION` / `SALES_RETURN` Credit Notes, partial & full FEFO dispatches (`DISPATCH_OUT`), POD delivery tracking, WhatsApp/Email sharing, and 7-tab CSV-exportable Billing & GST Reports.
+- **Payments, Accounts Receivable & Product Costing (Phase 9):**
+  - Multi-mode customer receipts (`PMT/YYYY-YY/NNNN`) & `%PDF-1.4` receipts, split allocations, advances/refunds (`RFD/YYYY-YY/NNNN`), reversals, Credit Note unwind, strict `due_date`-based AR ageing & statements, FIFO batch costing (`₹30.90/pkt` with labour/power/monthly pools), Collections CSV export, and Gross Margin analytics.
 - **Centralized Audit, Cross-Module Reconciliation & Management Intelligence (Phase 10):**
-  - **Centralized Audit Explorer & IAM Governance (`/audit/*`, `/iam/users`):** Request correlation tracking (`REQ-...`), automatic credential key redaction, filtered/paginated audit explorer, security event summaries, per-user activity reporting, CSV export, and audit-logged user provisioning / role & status governance.
-  - **Cross-Module Reconciliation Engine (`/reconciliation/*`, `REC/YYYY-YY/NNNN`):** Deterministic parity verification across Inventory (`Opening + Inward - Outward` vs `InventoryBalance` vs open `CostLot` layers + GRN parity), Sales-to-Invoice, Invoice GST splits & Credit Notes, Payments & Customer Receivables, Dispatch-to-Ledger (`DISPATCH_OUT`), and Production output/material/costing integrity, paired with controlled investigation/approval/`STOCK_ADJUSTMENT` resolution and re-run auto-verification workflows.
-  - **Management Intelligence Dashboard (`/intelligence/*`):** Executive KPI summary (Net Sales excl. GST, Gross Profit Margin, Collections, Due-Date AR Ageing, FIFO Stock Valuation, Batch Yield), operational backlog counters, actionable severity-ranked watchlist, and CSV summary export.
+  - Centralized Audit Explorer (`REQ-` correlation refs, secret redaction, CSV export), IAM `/iam/users` governance, Cross-Module Reconciliation Engine (`REC/YYYY-YY/NNNN`, `FULL_SYSTEM` + discrepancy workflow), and Executive Owner Dashboard (`/admin/intelligence` landing route).
 
-> **Current Production MVP Scope (Phases 4–10 Complete):** Covers Field Sales Orders, Purchasing & Goods Receipts, Unified Inventory & FIFO/FEFO Cost Lots, BOM & Production Execution, GST Billing & Dispatch, Customer Payments, Accounts Receivable, Batch Costing, Gross Margin Analytics, Centralized Audit, Cross-Module Reconciliation & Management Intelligence. External payment-gateway webhooks, statutory e-Invoice NIC uploads, and non-production overhead GL modules remain outside current ERP scope.
+> **Scope & Known Boundaries:** Covers all Must-Have (`FR-M-01`–`14`) and Should-Have (`FR-S-01`–`08`) workflows through CSV/PDF exports (binary `.xlsx` omitted); external NIC e-Invoice portals, payment-gateway webhooks, non-production SG&A GL ledgers, and Service Worker offline outbox remain outside current scope. See [known-limitations.md](file:///d:/mac/ota/docs/phase11/known-limitations.md).
 
 ---
 
@@ -50,7 +36,8 @@ Implemented and verified across Phases 4, 5, 6, 7, 8, 9, and 10:
 ├── Problem Statement - Winter Internship Application - 2026.docx
 ├── .gitignore
 ├── .env.example
-├── docker-compose.yml
+├── docker-compose.yml                 # Local development stack
+├── docker-compose.prod.yml            # Production Postgres + FastAPI + Nginx static/reverse proxy stack
 ├── infrastructure/
 │   └── postgres/init/
 │       └── 01-create-test-db.sql      # Creates isolated ota_test database
@@ -64,14 +51,15 @@ Implemented and verified across Phases 4, 5, 6, 7, 8, 9, and 10:
 │   ├── phase7/                        # Phase 7 BOM & production docs (15 docs)
 │   ├── phase8/                        # Phase 8 GST billing, PDF, CN, dispatch & delivery docs (16 docs)
 │   ├── phase9/                        # Phase 9 payments, AR, batch costing, profitability & verification docs (9 docs)
-│   └── phase10/                       # Phase 10 centralized audit, reconciliation, intelligence & testing docs (11 docs)
+│   ├── phase10/                       # Phase 10 centralized audit, reconciliation, intelligence & testing docs (11 docs)
+│   └── phase11/                       # Phase 11 integration, benchmark, security, perf, deployment & manuals (13 docs)
 ├── backend/
 │   ├── alembic/                       # 0001 -> ... -> 0007_phase10_audit_recon
 │   ├── app/
 │   │   ├── core/                      # Config, PostgreSQL session, exceptions, logging, security
 │   │   ├── modules/
 │   │   │   ├── iam/                   # Roles, users, login/me, user/role governance endpoints, RBAC guards
-│   │   │   ├── sales/                 # Salesmen, customers, products, pack sizes, price lists
+│   │   │   ├── sales/                 # Salesmen, customers, customer CRUD, products, pack sizes, price revisions
 │   │   │   ├── orders/                # State machine, submission, verification, audit queries
 │   │   │   ├── purchasing/            # Suppliers, Purchase Orders, Goods Receipts & QC posting
 │   │   │   ├── inventory/             # Materials, UOMs, CostLots, Ledger, Adjustments & Reports
@@ -85,28 +73,44 @@ Implemented and verified across Phases 4, 5, 6, 7, 8, 9, and 10:
 │   │   └── seeds/
 │   │       ├── benchmark_seed.py      # Official Section 5 master, RM/Pkg/FG opening stock, SUP-001 & MRK-200G BOM v1
 │   │       └── dev_fixtures.py        # Optional separate controlled dev stock fixture helper
-│   └── tests/                         # 59 automated Pytest tests against isolated ota_test DB
+│   └── tests/                         # 62 automated Pytest tests against isolated ota_test DB
 └── frontend/
+    ├── Dockerfile.prod                # Multi-stage Vite build -> Nginx 1.27 static + /api/ proxy
+    ├── nginx.conf                     # Security headers & SPA fallback configuration
     └── src/
         ├── lib/                       # API client, money & unit formatters, auth context
         ├── components/                # UI primitives, StatusBadge, mobile & desktop layouts
-        └── pages/                     # Login, Salesman mobile pages, Admin Order/Purchasing/Inventory/BOM/Production/Billing/Dispatch pages
+        └── pages/                     # Login, Salesman mobile pages, Admin Control Desk (incl. Customers & Pricing, Intelligence)
 ```
 
 ---
 
-## Technology Stack
+## Technology Stack & Architecture Rationale
 
 - **Backend:** Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0, Alembic, Psycopg 3, `pwdlib` (Argon2id), `PyJWT`, Pytest, Ruff
-- **Database:** PostgreSQL 16
-- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui primitives, Lucide React, React Router, TanStack Query
-- **Infrastructure:** Docker, Docker Compose, `.env`-based configuration
+- **Database:** PostgreSQL 16 (modular monolith sharing one ACID ledger across 9 schemas and 54 tables so approvals, reservations, FIFO consumption, GST invoices, payment allocations, and audit logs never drift)
+- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui primitives, Lucide React, React Router
+- **Infrastructure:** Docker Compose (dev + multi-stage Nginx 1.27 production proxy stack in [`docker-compose.prod.yml`](file:///d:/mac/ota/docker-compose.prod.yml)), `.env`-based configuration with `validate_production_safety()`
+
+---
+
+## Official Section 5 Benchmark Validation Summary
+
+Verified simultaneously end-to-end inside [`test_phase11_integration_benchmark_security.py`](file:///d:/mac/ota/backend/tests/test_phase11_integration_benchmark_security.py):
+- **Flour Closing:** `120 kg` (`100 + 60 - 40`)
+- **Oil Closing:** `19.5 L` (`30 - 10.5`)
+- **Pouches / Cartons / Spice Closing:** `306 pcs`, `21 cartons`, `3.8 kg spice`
+- **Finished Goods (`MRK-200G`):** `238 pkts` (`50 + 188`) post-production -> **`88 pkts`** after Retailer A dispatch
+- **Variances:** Yield **`-6.00%` (FLAGGED)**, Oil **`+5.00%` (FLAGGED)**, Pouches output-scaled **`+3.19%` (FLAGGED)**
+- **Batch Costing:** **`₹30.90/pkt`** (`₹5,810.00 / 188 pkts`, Gross Margin `38.20%`)
+- **Retailer A Invoice & AR:** **`₹7,875.00`** (`INV/2026-27/0001`, Intra-State `CGST 2.5% + SGST 2.5%`) -> **`₹3,875.00`** (`PARTIALLY_PAID`) after `₹4,000.00` payment
+- **Distributor B Shortage & GST:** **`32 pkts` shortage** on `120`-pkt order (blocked `409`); **`5% IGST`** (`INTER_STATE` TN `33 ->` KA `29`)
 
 ---
 
 ## Quick Start
 
-### Option A: Docker Compose
+### Option A: Development Docker Compose
 
 ```bash
 cp .env.example .env
@@ -132,7 +136,7 @@ uv run python -m app.seeds.benchmark_seed
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-*(Optional separate dev fixture to test full 150-pkt approval locally without altering benchmark seed or fabricating production output: `uv run python -m app.seeds.dev_fixtures --add-pkts 150`.)*
+*(Optional separate dev fixture to test 150-pkt approval locally without altering benchmark seed: `uv run python -m app.seeds.dev_fixtures --add-pkts 150`.)*
 
 **Frontend:**
 
@@ -142,11 +146,21 @@ npm install
 npm run dev
 ```
 
+### Option C: Production Container Stack ([`docker-compose.prod.yml`](file:///d:/mac/ota/docker-compose.prod.yml))
+
+Requires a host `.env.prod` supplying `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `JWT_SECRET_KEY` (>= 32 chars), and `CORS_ORIGINS`; enforces `ENVIRONMENT=production` and `ENABLE_DEV_SEED=false`:
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml up --build -d
+```
+
+*(Production artifacts statically audited + Vite bundled cleanly; local Docker daemon execution N/A on Windows host.)*
+
 ---
 
 ## Verification & Automated Tests
 
-**Backend Lint & Pytest (59 tests executed against isolated `ota_test`, never mutating `ota_dev`):**
+**Backend Lint & Pytest (62 tests executed against isolated `ota_test`, never mutating `ota_dev`):**
 
 ```bash
 cd backend
@@ -168,12 +182,12 @@ npm run build
 
 | Username | Role | Password | Primary View |
 | --- | --- | --- | --- |
-| `salesman_a` | `SALESMAN` | `SalesA@2026!` | Mobile Salesman (`/salesman`) — own orders, invoice balances & customer AR summary |
+| `salesman_a` | `SALESMAN` | `SalesA@2026!` | Mobile Salesman (`/salesman`) — own orders, invoice PDF/share, billed/paid/due customer cards |
 | `salesman_b` | `SALESMAN` | `SalesB@2026!` | Mobile Salesman (`/salesman`) — assigned `Distributor B` (strictly isolated from Salesman A & all costing) |
-| `admin` | `FACTORY_ADMIN` | `Admin@2026!` | Desktop Control Desk (`/admin`) — Sales, Purchasing, Inventory, BOM, Production, Billing, Dispatch, Payments, AR, Costing & Profitability |
-| `supervisor` | `PRODUCTION_SUPERVISOR` | `Prod@2026!` | BOM, Production, Product Costing & Overheads, Purchasing & Inventory (blocked `403` on Sales Orders, Billing & Customer Finance) |
-| `auditor` | `ACCOUNTANT_AUDITOR` | `Audit@2026!` | Desktop read-only financial oversight — Finance/Payments/AR/Statements, Costing, Profitability, GST Reports, Ledger & Audit Trail |
-| `owner` | `OWNER` | `Owner@2026!` | Desktop read-only executive oversight — Finance/AR/Profitability, Product Costing, GST Reports, Variances & Audit Trail |
+| `admin` | `FACTORY_ADMIN` | `Admin@2026!` | Desktop Control Desk (`/admin`) — Orders, Customers & SKU Pricing (`/admin/catalog`), Purchasing, Inventory, BOM, Production, Billing, Dispatch, Payments, AR, Costing & Reconciliation |
+| `supervisor` | `PRODUCTION_SUPERVISOR` | `Prod@2026!` | BOM, Production, Product Costing & Overheads, Purchasing & Inventory (`/admin/inventory`, blocked `403` on Sales Orders, Billing & Customer Finance) |
+| `auditor` | `ACCOUNTANT_AUDITOR` | `Audit@2026!` | Desktop read-only oversight — Audit Explorer, Reconciliation, Management Intelligence, Finance/AR/Profitability, Costing, GST Reports & Ledger |
+| `owner` | `OWNER` | `Owner@2026!` | Executive Management Intelligence Dashboard (`/admin/intelligence`) — cross-module KPIs, watchlist, user role governance, reconciliation correction approvals |
 
 ---
 
@@ -249,3 +263,17 @@ npm run build
   - [database-changes.md](file:///d:/mac/ota/docs/phase10/database-changes.md)
   - [api-documentation.md](file:///d:/mac/ota/docs/phase10/api-documentation.md)
   - [testing-report.md](file:///d:/mac/ota/docs/phase10/testing-report.md)
+- **Phase 11 Final Submission Documentation (`docs/phase11/`):**
+  - [final-requirement-matrix.md](file:///d:/mac/ota/docs/phase11/final-requirement-matrix.md)
+  - [system-integration-report.md](file:///d:/mac/ota/docs/phase11/system-integration-report.md)
+  - [benchmark-validation-report.md](file:///d:/mac/ota/docs/phase11/benchmark-validation-report.md)
+  - [end-to-end-testing-report.md](file:///d:/mac/ota/docs/phase11/end-to-end-testing-report.md)
+  - [security-testing-report.md](file:///d:/mac/ota/docs/phase11/security-testing-report.md)
+  - [performance-testing-report.md](file:///d:/mac/ota/docs/phase11/performance-testing-report.md)
+  - [deployment-guide.md](file:///d:/mac/ota/docs/phase11/deployment-guide.md)
+  - [installation-guide.md](file:///d:/mac/ota/docs/phase11/installation-guide.md)
+  - [user-manual.md](file:///d:/mac/ota/docs/phase11/user-manual.md)
+  - [administrator-manual.md](file:///d:/mac/ota/docs/phase11/administrator-manual.md)
+  - [known-limitations.md](file:///d:/mac/ota/docs/phase11/known-limitations.md)
+  - [final-project-report.md](file:///d:/mac/ota/docs/phase11/final-project-report.md)
+  - [final-demo-script.md](file:///d:/mac/ota/docs/phase11/final-demo-script.md)
