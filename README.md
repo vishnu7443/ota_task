@@ -6,12 +6,12 @@ All company, customer, product, and transaction records are strictly fictional b
 
 ---
 
-## Current Status: Phase 9 — Payment Management, Accounts Receivable & Product Costing
+## Current Status: Phase 10 — Audit, Reconciliation & Management Intelligence
 
-Implemented and verified across Phases 4, 5, 6, 7, 8, and 9:
-- **Modular Monolith Backend & Role-Scoped UI:** Backend modules (`iam`, `sales`, `orders`, `purchasing`, `inventory`, `production`, `billing`, `finance`, `costing`, `audit`) cleanly layered across FastAPI routers, Pydantic schemas, state guards, services, repositories, and SQLAlchemy 2.0 models, paired with mobile-first Salesman (`375px`) and desktop-first Factory Control Desk (`1280px`) interfaces.
-- **PostgreSQL 16 Schema, Constraints & Triggers (`0001`–`0006`):**
-  - Integer-paisa financial columns, `NUMERIC(18,3)` canonical base quantities (`g`, `ml`, `piece`, `packet`), `NUMERIC(18,6)` sub-paisa FIFO/FEFO unit costs, `GENERATED ALWAYS AS` available-stock, invoice/credit-note total, payment unallocated-balance, and receivable outstanding-balance columns, `ON DELETE RESTRICT` foreign keys, append-only ledger/audit/dispatch-history/refund triggers (`fn_prevent_mutation()`), immutable BOM/invoice/payment/allocation/cost-summary triggers, over-dispatch & over-allocation DB guards, and atomic movement-to-balance trigger (`fn_sync_balance_from_movement()`).
+Implemented and verified across Phases 4, 5, 6, 7, 8, 9, and 10:
+- **Modular Monolith Backend & Role-Scoped UI:** Backend modules (`iam`, `sales`, `orders`, `purchasing`, `inventory`, `production`, `billing`, `finance`, `costing`, `audit`, `reconciliation`, `intelligence`) cleanly layered across FastAPI routers, Pydantic schemas, state guards, services, repositories, and SQLAlchemy 2.0 models, paired with mobile-first Salesman (`375px`) and desktop-first Factory Control Desk (`1280px`) interfaces.
+- **PostgreSQL 16 Schema, Constraints & Triggers (`0001`–`0007`):**
+  - Integer-paisa financial columns, `NUMERIC(18,3)` canonical base quantities (`g`, `ml`, `piece`, `packet`), `NUMERIC(18,6)` sub-paisa FIFO/FEFO unit costs, `GENERATED ALWAYS AS` available-stock, invoice/credit-note total, payment unallocated-balance, and receivable outstanding-balance columns, `ON DELETE RESTRICT` foreign keys, append-only ledger/audit/dispatch-history/refund/reconciliation-event triggers (`fn_prevent_mutation()`), immutable BOM/invoice/payment/allocation/cost-summary/closed-reconciliation triggers, over-dispatch & over-allocation DB guards, and atomic movement-to-balance trigger (`fn_sync_balance_from_movement()`).
 - **Sales Order Management & Stock Reservation (Phases 4–5):**
   - Enforced lifecycle across `SUBMITTED`, `UNDER_REVIEW`, `CORRECTION_REQUESTED`, `APPROVED`, `INVOICED`, `PARTIALLY_DISPATCHED`, `DISPATCHED`, `REJECTED`, and `CANCELLED` with row-level `FOR UPDATE` locks and `version` checks.
   - Atomic stock reservation upon `APPROVED` (`available = on_hand - reserved`) protecting sales commitments against concurrent overselling or negative stock adjustments.
@@ -35,8 +35,12 @@ Implemented and verified across Phases 4, 5, 6, 7, 8, and 9:
   - **Accounts Receivable, Due-Date Ageing & Statements (`finance.customer_receivables`):** Real-time AR balance tracking (`original - credited - paid`), strict `due_date` vs `as_of_date` ageing across `NOT_DUE`, `0–30`, `31–60`, `61–90`, and `> 90` days, chronological Customer Statements, and Salesman own-customer AR visibility.
   - **Production Costing & Overheads (`costing.production_overheads`, `costing.production_cost_summaries`):** Auto `v1 PRELIMINARY` batch costing upon production post from FIFO `CostLotConsumption` layers (`raw_material`, `good/damaged packaging`, `raw wastage`, `rejected output impact`), direct run overheads (`DIRECT_LABOUR`, `GAS_POWER`, etc.), largest-remainder monthly factory pool allocations by good packets, planned-vs-actual BOM unit cost variances, and immutable versioned snapshots (`v1 -> v2 -> ...`).
   - **Gross Profitability Analytics (`/finance/profitability`):** Product, customer, order, and date profitability separating Net Revenue (excl. GST), GST Collected liability, Dispatched FEFO + Estimated Pending COGS, Gross Margin %, Cash Received, and Open AR, with explicit non-claim disclaimer for non-production opex / Net Profit.
+- **Centralized Audit, Cross-Module Reconciliation & Management Intelligence (Phase 10):**
+  - **Centralized Audit Explorer & IAM Governance (`/audit/*`, `/iam/users`):** Request correlation tracking (`REQ-...`), automatic credential key redaction, filtered/paginated audit explorer, security event summaries, per-user activity reporting, CSV export, and audit-logged user provisioning / role & status governance.
+  - **Cross-Module Reconciliation Engine (`/reconciliation/*`, `REC/YYYY-YY/NNNN`):** Deterministic parity verification across Inventory (`Opening + Inward - Outward` vs `InventoryBalance` vs open `CostLot` layers + GRN parity), Sales-to-Invoice, Invoice GST splits & Credit Notes, Payments & Customer Receivables, Dispatch-to-Ledger (`DISPATCH_OUT`), and Production output/material/costing integrity, paired with controlled investigation/approval/`STOCK_ADJUSTMENT` resolution and re-run auto-verification workflows.
+  - **Management Intelligence Dashboard (`/intelligence/*`):** Executive KPI summary (Net Sales excl. GST, Gross Profit Margin, Collections, Due-Date AR Ageing, FIFO Stock Valuation, Batch Yield), operational backlog counters, actionable severity-ranked watchlist, and CSV summary export.
 
-> **Current Production MVP Scope (Phases 4–9 Complete):** Covers Field Sales Orders, Purchasing & Goods Receipts, Unified Inventory & FIFO/FEFO Cost Lots, BOM & Production Execution, GST Billing & Dispatch, and Customer Payments, Accounts Receivable, Batch Costing & Gross Margin Analytics. External payment-gateway webhooks, statutory e-Invoice NIC uploads, and non-production overhead GL modules remain outside current ERP scope.
+> **Current Production MVP Scope (Phases 4–10 Complete):** Covers Field Sales Orders, Purchasing & Goods Receipts, Unified Inventory & FIFO/FEFO Cost Lots, BOM & Production Execution, GST Billing & Dispatch, Customer Payments, Accounts Receivable, Batch Costing, Gross Margin Analytics, Centralized Audit, Cross-Module Reconciliation & Management Intelligence. External payment-gateway webhooks, statutory e-Invoice NIC uploads, and non-production overhead GL modules remain outside current ERP scope.
 
 ---
 
@@ -59,13 +63,14 @@ Implemented and verified across Phases 4, 5, 6, 7, 8, and 9:
 │   ├── phase6/                        # Phase 6 purchasing & inventory docs (12 docs)
 │   ├── phase7/                        # Phase 7 BOM & production docs (15 docs)
 │   ├── phase8/                        # Phase 8 GST billing, PDF, CN, dispatch & delivery docs (16 docs)
-│   └── phase9/                        # Phase 9 payments, AR, batch costing, profitability & verification docs (9 docs)
+│   ├── phase9/                        # Phase 9 payments, AR, batch costing, profitability & verification docs (9 docs)
+│   └── phase10/                       # Phase 10 centralized audit, reconciliation, intelligence & testing docs (11 docs)
 ├── backend/
-│   ├── alembic/                       # 0001 -> ... -> 0006_phase9_payments_costing
+│   ├── alembic/                       # 0001 -> ... -> 0007_phase10_audit_recon
 │   ├── app/
 │   │   ├── core/                      # Config, PostgreSQL session, exceptions, logging, security
 │   │   ├── modules/
-│   │   │   ├── iam/                   # Roles, users, login/me endpoints, RBAC guards
+│   │   │   ├── iam/                   # Roles, users, login/me, user/role governance endpoints, RBAC guards
 │   │   │   ├── sales/                 # Salesmen, customers, products, pack sizes, price lists
 │   │   │   ├── orders/                # State machine, submission, verification, audit queries
 │   │   │   ├── purchasing/            # Suppliers, Purchase Orders, Goods Receipts & QC posting
@@ -74,11 +79,13 @@ Implemented and verified across Phases 4, 5, 6, 7, 8, and 9:
 │   │   │   ├── billing/               # GST engine, FY numbering, Invoices, PDF, Credit Notes, Dispatch & Reports
 │   │   │   ├── finance/               # Payments, multi-invoice allocations, refunds, AR ageing, statements & profitability
 │   │   │   ├── costing/               # FIFO production batch costing, direct & monthly overhead pools, snapshots
-│   │   │   └── audit/                 # Append-only audit log service & variance alerts
+│   │   │   ├── audit/                 # Append-only audit explorer, summary, activity & reconciliation workflow models
+│   │   │   ├── reconciliation/        # Cross-module diagnostic engine & discrepancy workflow API
+│   │   │   └── intelligence/          # Real-time Management Intelligence KPIs, watchlist & CSV exports
 │   │   └── seeds/
 │   │       ├── benchmark_seed.py      # Official Section 5 master, RM/Pkg/FG opening stock, SUP-001 & MRK-200G BOM v1
 │   │       └── dev_fixtures.py        # Optional separate controlled dev stock fixture helper
-│   └── tests/                         # 54 automated Pytest tests against isolated ota_test DB
+│   └── tests/                         # 59 automated Pytest tests against isolated ota_test DB
 └── frontend/
     └── src/
         ├── lib/                       # API client, money & unit formatters, auth context
@@ -139,7 +146,7 @@ npm run dev
 
 ## Verification & Automated Tests
 
-**Backend Lint & Pytest (54 tests executed against isolated `ota_test`, never mutating `ota_dev`):**
+**Backend Lint & Pytest (59 tests executed against isolated `ota_test`, never mutating `ota_dev`):**
 
 ```bash
 cd backend
@@ -230,3 +237,15 @@ npm run build
   - [database-changes.md](file:///d:/mac/ota/docs/phase9/database-changes.md)
   - [api-documentation.md](file:///d:/mac/ota/docs/phase9/api-documentation.md)
   - [testing-report.md](file:///d:/mac/ota/docs/phase9/testing-report.md)
+- **Phase 10 Documentation (`docs/phase10/`):**
+  - [phase10-overview.md](file:///d:/mac/ota/docs/phase10/phase10-overview.md)
+  - [audit-architecture.md](file:///d:/mac/ota/docs/phase10/audit-architecture.md)
+  - [audit-event-catalog.md](file:///d:/mac/ota/docs/phase10/audit-event-catalog.md)
+  - [inventory-reconciliation.md](file:///d:/mac/ota/docs/phase10/inventory-reconciliation.md)
+  - [financial-reconciliation.md](file:///d:/mac/ota/docs/phase10/financial-reconciliation.md)
+  - [production-reconciliation.md](file:///d:/mac/ota/docs/phase10/production-reconciliation.md)
+  - [discrepancy-resolution.md](file:///d:/mac/ota/docs/phase10/discrepancy-resolution.md)
+  - [management-dashboard.md](file:///d:/mac/ota/docs/phase10/management-dashboard.md)
+  - [database-changes.md](file:///d:/mac/ota/docs/phase10/database-changes.md)
+  - [api-documentation.md](file:///d:/mac/ota/docs/phase10/api-documentation.md)
+  - [testing-report.md](file:///d:/mac/ota/docs/phase10/testing-report.md)

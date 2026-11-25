@@ -39,11 +39,15 @@ def db_session() -> Generator[Session, None, None]:
         # Temporarily bypass append-only triggers only for test fixture cleanup
         conn.execute(text("ALTER TABLE inventory.inventory_movements DISABLE TRIGGER trg_inventory_movements_append_only"))
         conn.execute(text("ALTER TABLE audit.audit_logs DISABLE TRIGGER trg_audit_logs_append_only"))
+        conn.execute(text("ALTER TABLE audit.reconciliation_events DISABLE TRIGGER trg_reconciliation_events_append_only"))
         conn.execute(text("ALTER TABLE sales.sales_order_status_history DISABLE TRIGGER trg_order_status_history_append_only"))
         conn.execute(
             text(
                 """
                 TRUNCATE TABLE
+                    audit.reconciliation_events,
+                    audit.reconciliation_discrepancies,
+                    audit.reconciliation_runs,
                     audit.variance_alerts,
                     audit.audit_logs,
                     costing.production_cost_summaries,
@@ -104,6 +108,7 @@ def db_session() -> Generator[Session, None, None]:
         )
         conn.execute(text("ALTER TABLE inventory.inventory_movements ENABLE TRIGGER trg_inventory_movements_append_only"))
         conn.execute(text("ALTER TABLE audit.audit_logs ENABLE TRIGGER trg_audit_logs_append_only"))
+        conn.execute(text("ALTER TABLE audit.reconciliation_events ENABLE TRIGGER trg_reconciliation_events_append_only"))
         conn.execute(text("ALTER TABLE sales.sales_order_status_history ENABLE TRIGGER trg_order_status_history_append_only"))
 
     db = TestSessionLocal()
